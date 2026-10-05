@@ -164,7 +164,7 @@ final class HotKey: HotKeyHandling {
         ]
         let userData = Unmanaged.passUnretained(self).toOpaque()
         var ref: EventHandlerRef?
-        let status = InstallEventHandler(GetEventDispatcherTarget(), hotKeyEventHandler, ItemCount(types.count), &types, userData, &ref)
+        let status = InstallEventHandler(GetEventDispatcherTarget(), hotKeyEventHandler, numericCast(types.count), &types, userData, &ref)
         if status == noErr { handlerRef = ref }
     }
 
@@ -206,7 +206,7 @@ private nonisolated func hotKeyEventHandler(_ call: EventHandlerCallRef?, _ even
     guard let event, let userData else { return OSStatus(eventNotHandledErr) }
     var id = EventHotKeyID()
     let status = GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
-                                   nil, ByteCount(MemoryLayout<EventHotKeyID>.size), nil, &id)
+                                   nil, numericCast(MemoryLayout<EventHotKeyID>.size), nil, &id)
     guard status == noErr else { return status }
     let kind = GetEventKind(event)
     let hotKey = Unmanaged<HotKey>.fromOpaque(userData).takeUnretainedValue()
