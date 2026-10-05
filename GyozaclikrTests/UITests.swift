@@ -13,7 +13,7 @@ struct BoxPlacementTests {
         let anchor = CGRect(x: 420, y: 512, width: 560, height: 54)
         let frame = BoxPlacement.frame(size: size, anchor: .selection(anchor), screenVisible: screen)
         #expect(frame.minX == 420)
-        #expect(frame.maxY == 512 - 8)
+        #expect(frame.maxY == 504)
         #expect(!frame.intersects(anchor))
     }
 
@@ -21,14 +21,14 @@ struct BoxPlacementTests {
         let anchor = CGRect(x: 100, y: 40, width: 300, height: 20)
         let placed = BoxPlacement.place(size: size, anchor: .selection(anchor), screenVisible: screen)
         #expect(placed.above)
-        #expect(placed.frame.minY == anchor.maxY + 8)
+        #expect(placed.frame.minY == 68)
         #expect(!placed.frame.intersects(anchor))
     }
 
     @Test func shiftsInsideAtTheRightEdge() {
         let anchor = CGRect(x: 1300, y: 500, width: 100, height: 20)
         let frame = BoxPlacement.frame(size: size, anchor: .selection(anchor), screenVisible: screen)
-        #expect(frame.maxX == 1440 - 16)
+        #expect(frame.maxX == 1424)
         #expect(frame.minX >= 16)
         #expect(!frame.intersects(anchor))
     }
@@ -36,14 +36,14 @@ struct BoxPlacementTests {
     @Test func pointerAnchorIsBelowRight() {
         let frame = BoxPlacement.frame(size: size, anchor: .pointer(CGPoint(x: 600, y: 400)), screenVisible: screen)
         #expect(frame.minX == 612)
-        #expect(frame.maxY == 400 - 12)
+        #expect(frame.maxY == 388)
     }
 
     @Test func regionAnchorsAtItsBottomLeft() {
         let region = CGRect(x: 300, y: 400, width: 320, height: 120)
         let frame = BoxPlacement.frame(size: size, anchor: .region(region), screenVisible: screen)
         #expect(frame.minX == 300)
-        #expect(frame.maxY == 400 - 8)
+        #expect(frame.maxY == 392)
     }
 
     @Test func neverCoversTheAnchor() {
