@@ -2,13 +2,19 @@
 
 A pointer-level assistant for the Mac. Select text in any app, or a region of the screen, press the shortcut, and a small box appears beside the selection. Ask for what you want: fix it, make it formal, summarise it, turn it into a list, remind me about it, send it as mail. Apple Intelligence's on-device model does the work; on macOS 27 it can see a selected picture too. Your local Ollama model is the labelled second engine for harder image questions. Nothing leaves the Mac unless you choose an engine that does, and the box says so.
 
-Status: researched and designed; not built yet. See `docs/BRIEF.md` for the idea, `docs/PLAN.md` for the architecture and scope, `docs/DESIGN.md` for the box, and `docs/research/` for the three reports behind them.
+Status: 1.0 built and released from CI; not yet verified on a Mac. See `docs/BRIEF.md` for the idea, `docs/PLAN.md` for the architecture and scope, `docs/DESIGN.md` for the box, and `docs/research/` for the three reports behind them.
 
 ## What it will and won't do
 - Transforms of what you selected: reliable, on-device, no confirmation, undoable.
 - Reminders, events, notes, mail: through Apple's own apps, always with a confirmation card.
 - Questions about a picture: Live Text for the words, Apple's model on macOS 27 for a description, Ollama's Qwen3-VL when you ask for it.
 - Not: identifying people, finding where to buy something, checking facts. The on-device model is a 3B-parameter transformer of text, not a source of truth, and the app treats it that way.
+
+## Versions
+- **1.0** (6 Oct 2026): first release. Hot key and Services entry, selection reading with a ⌘C fallback, region capture with Live Text, the box with eight chips and free text, Apple's on-device model (text; images on macOS 27), Ollama as the labelled second engine, reminders, events, notes, mail compose, search, Shortcuts, dictionary, history, Engines and Permissions panes.
+
+## Install
+Download `Gyozaclikr.zip` from the latest release, unzip, move to Applications, open. The first launch is refused by Gatekeeper (the app is not notarized): System Settings › Privacy & Security › Open Anyway. Grant Accessibility when asked; Screen Recording is asked on the first region capture. To keep those grants across updates, run `scripts/resign.sh` once with your own certificate (see the script).
 
 ## Requirements
 macOS 26 or later on Apple silicon with Apple Intelligence on; macOS 27 for image questions through Apple's model. Accessibility for reading selections; Screen Recording for regions.
