@@ -1,0 +1,358 @@
+import AppKit
+import Foundation
+import Observation
+
+/// The box's states (docs/DESIGN.md "States"). `hidden` is the panel
+/// off screen; the rest are what the card shows.
+nonisolated enum BoxState: Hashable, Sendable {
+    case hidden, empty, typing, streaming, done, failed, confirming, asking
+
+    /// The wide card: the answer is on screen.
+    var isWide: Bool { self == .streaming || self == .done }
+    var isWorking: Bool { self == .streaming }
+}
+
+/// Everything the card shows, in one observable object the coordinator
+/// writes and the views read. The coordinator sets the callbacks; the box
+/// never performs anything itself.
+@Observable
+final class BoxModel {
+    var state: BoxState = .hidden
+    var selection: Selection = .none
+    var input: String = ""
+    /// The context-filtered chips the coordinator chose for this selection.
+    var chips: [Chip] = Chip.allCases
+    /// The chip Tab accepts when the input is empty (dim accent outline).
+    var suggestedChip: Chip?
+    var engine: EngineKind = .apple
+    /// The Ollama model's name for the label ("Qwen3-VL-8B"); nil for Apple.
+    var engineModelName: String?
+    /// A non-localhost Ollama host: the label says so.
+    var engineLeavesMac = false
+    /// The status verb while working ("Rewriting…").
+    var status: String = ""
+    /// The streamed answer, flushed in 40 ms steps so the layout does not shake.
+    private(set) var answer: String = ""
+    var answerKind: Answer.Kind = .text
+    var kept = 0
+    var dropped = 0
+    var failure: EngineFailure?
+    /// The confirmation card's content.
+    var proposal: ActionProposal?
+    /// The asking state.
+    var question: String = ""
+    var options: [String] = []
+    /// One toast line under the actions, cleared after 2.5 s.
+    private(set) var outcome: ActionOutcome?
+    /// ↑ recalls this.
+    var lastRequest: String = ""
+    var isEditableSource = false
+    /// Seconds since the request started, shown in mono on the Ollama path.
+    var elapsed: TimeInterval = 0
+
+    // MARK: Callbacks the coordinator sets
+
+    var onSubmit: (String) -> Void = { _ in }
+    var onChip: (Chip) -> Void = { _ in }
+    var onAction: (ResultAction) -> Void = { _ in }
+    var onConfirm: (ActionProposal) -> Void = { _ in }
+    /// Puts the proposal back in the input for editing (the model does the text; the coordinator may add to it).
+    var onEdit: (ActionProposal) -> Void = { _ in }
+    var onOption: (String) -> Void = { _ in }
+    /// Esc while streaming.
+    var onCancel: () -> Void = {}
+    /// Esc otherwise, a click outside, ⌘-Tab away.
+    var onClose: () -> Void = {}
+    var onOpenHistory: () -> Void = {}
+
+    @ObservationIgnored private let coalescer = TokenCoalescer(window: Theme.Box.coalesce)
+    @ObservationIgnored private var outcomeTask: Task<Void, Never>?
+    @ObservationIgnored private var announcedSentences = 0
+    /// Where sentence announcements go; VoiceOver by default, a test's array otherwise.
+    @ObservationIgnored var announce: (String) -> Void = { sentence in
+        NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
+                             userInfo: [.announcement: sentence, .priority: NSAccessibilityPriorityLevel.low.rawValue])
+    }
+
+    init() {
+        coalescer.onFlush = { [weak self] text in self?.flushed(text) }
+    }
+
+    // MARK: Derived, for the views
+
+    /// 360 pt, or 480 while an answer is on screen.
+    var width: CGFloat { state.isWide ? Theme.Box.wideWidth : Theme.Box.width }
+
+    var placeholder: String {
+        switch selection.kind {
+        case .image: "Ask about this image…"
+        case .word: "Define \(selection.word ?? "this word")…"
+        case .text, .none: "Ask about this selection…"
+        }
+    }
+
+    /// The chips the row shows, narrowed by the word being typed.
+    var visibleChips: [Chip] { ChipFilter.visible(chips, input: input) }
+
+    /// The chip Tab accepts right now.
+    var activeSuggestion: Chip? { ChipFilter.suggestion(chips, input: input, preferred: suggestedChip) }
+
+    /// The collapsed row's text while streaming and done.
+    var engineLabel: String {
+        var label = engine.label
+        if engine == .ollama, let engineModelName {
+            label = "Ollama · \(engineModelName) · on this Mac"
+        }
+        if engineLeavesMac { label += " · leaves this Mac" }
+        return label
+    }
+
+    /// Replace when the source can take it, Copy otherwise.
+    var primaryAction: ResultAction { isEditableSource ? .replace : .copy }
+
+    /// The row's buttons in order; Replace and Insert below only where they can work.
+    var actions: [ResultAction] {
+        isEditableSource ? [.replace, .copy, .insertBelow, .send] : [.copy, .send]
+    }
+
+    var answerLineCount: Int { MarkdownLite.lineCount(answer) }
+    var offersNewWindow: Bool { answerLineCount > Theme.Box.linesBeforeWindow }
+
+    /// "Gyozaclikr, selection of 412 tokens".
+    var accessibilityTitle: String {
+        switch selection.kind {
+        case .text:
+            if let tokens = selection.tokenEstimate { return "Gyozaclikr, selection of \(tokens) tokens" }
+            return "Gyozaclikr, text selection"
+        case .image:
+            if let words = selection.ocrWordCount { return "Gyozaclikr, image with \(words) words" }
+            return "Gyozaclikr, image selection"
+        case .word: return "Gyozaclikr, define \(selection.word ?? "")"
+        case .none: return "Gyozaclikr"
+        }
+    }
+
+    /// The two chips under a failure sentence; none for a cancel.
+    var failureChips: [(title: String, action: () -> Void)] {
+        guard let failure else { return [] }
+        switch failure {
+        case .refused, .other:
+            return [("Try Fix", { [weak self] in self?.onChip(.fix) }), ("Copy", { [weak self] in self?.onAction(.copy) })]
+        case .tooLong:
+            return [("Shorter", { [weak self] in self?.onChip(.shorter) }), ("Summarise", { [weak self] in self?.onChip(.summarise) })]
+        case .unavailable, .rateLimited, .offline, .unsupportedLanguage:
+            return [("Try again", { [weak self] in self?.resubmit() })]
+        case .cancelled:
+            return []
+        }
+    }
+
+    // MARK: Transitions the coordinator calls
+
+    /// A fresh box over `selection`: empty state, chips as given.
+    func present(_ selection: Selection, chips: [Chip], suggested: Chip?) {
+        coalescer.cancel()
+        self.selection = selection
+        self.chips = chips
+        self.suggestedChip = suggested
+        isEditableSource = selection.isEditable
+        input = ""
+        answer = ""
+        answerKind = .text
+        kept = 0; dropped = 0
+        failure = nil
+        proposal = nil
+        question = ""; options = []
+        outcome = nil
+        status = ""
+        elapsed = 0
+        announcedSentences = 0
+        state = .empty
+    }
+
+    /// The request went out: collapse the chips, show the verb.
+    func begin(status: String, engine: EngineKind, request: String) {
+        coalescer.cancel()
+        self.status = status
+        self.engine = engine
+        lastRequest = request
+        answer = ""
+        failure = nil
+        elapsed = 0
+        announcedSentences = 0
+        state = .streaming
+    }
+
+    /// One streamed token; shown within 40 ms with whatever follows it.
+    func append(token: String) {
+        coalescer.append(token)
+    }
+
+    /// Replace the answer at once (a chunk, a corrected text).
+    func setAnswer(_ text: String) {
+        coalescer.cancel()
+        answer = text
+    }
+
+    func finish(_ result: Answer) {
+        coalescer.flushNow()
+        answer = result.text
+        answerKind = result.kind
+        engine = result.engine
+        kept = result.kept
+        dropped = result.dropped
+        state = .done
+    }
+
+    func fail(_ failure: EngineFailure) {
+        coalescer.flushNow()
+        self.failure = failure
+        state = .failed
+    }
+
+    func confirm(_ proposal: ActionProposal) {
+        coalescer.flushNow()
+        self.proposal = proposal
+        state = .confirming
+    }
+
+    func ask(_ question: String, options: [String]) {
+        coalescer.flushNow()
+        self.question = question
+        self.options = options
+        state = .asking
+    }
+
+    /// The toast line; gone after 2.5 s.
+    func show(outcome: ActionOutcome) {
+        self.outcome = outcome
+        outcomeTask?.cancel()
+        outcomeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2.5))
+            guard !Task.isCancelled else { return }
+            self?.outcome = nil
+        }
+    }
+
+    func hide() {
+        coalescer.cancel()
+        state = .hidden
+    }
+
+    // MARK: Key handling the views call
+
+    func submit() {
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
+            if let chip = activeSuggestion { onChip(chip) }
+            return
+        }
+        onSubmit(text)
+    }
+
+    func resubmit() {
+        guard !lastRequest.isEmpty else { return }
+        onSubmit(lastRequest)
+    }
+
+    func recall() {
+        guard !lastRequest.isEmpty else { return }
+        input = lastRequest
+    }
+
+    /// Tab: the suggested chip. Returns false when there is none, so Tab can move focus.
+    @discardableResult
+    func acceptSuggestion() -> Bool {
+        guard let chip = activeSuggestion else { return false }
+        onChip(chip)
+        return true
+    }
+
+    /// ⌘1–⌘8.
+    func chip(number: Int) {
+        guard let chip = Chip.allCases.first(where: { $0.shortcut == number }), chips.contains(chip) else { return }
+        onChip(chip)
+    }
+
+    /// Esc: cancel while working, close otherwise.
+    func escape() {
+        if state.isWorking { onCancel() } else { onClose() }
+    }
+
+    /// ⌘↩: the primary result action, or the confirmation card's action.
+    func primary() {
+        switch state {
+        case .done: onAction(primaryAction)
+        case .confirming: if let proposal { onConfirm(proposal) }
+        default: submit()
+        }
+    }
+
+    func edit() {
+        guard let proposal else { return }
+        input = ConfirmationRows.editText(for: proposal)
+        state = .typing
+        onEdit(proposal)
+    }
+
+    func inputChanged(_ text: String) {
+        input = text
+        if state == .empty, !text.isEmpty { state = .typing }
+        if state == .typing, text.isEmpty { state = .empty }
+    }
+
+    // MARK: Private
+
+    private func flushed(_ text: String) {
+        answer += text
+        // A polite live region, one sentence at a time.
+        let sentences = answer.split(whereSeparator: { ".!?".contains($0) })
+        if sentences.count > announcedSentences + 1 {
+            let newOnes = sentences.dropFirst(announcedSentences).dropLast()
+            for sentence in newOnes { announce(sentence.trimmingCharacters(in: .whitespacesAndNewlines)) }
+            announcedSentences = sentences.count - 1
+        }
+    }
+}
+
+/// Buffers streamed tokens and flushes them together after a short
+/// window (Theme.Box.coalesce), so each layout pass sees a few words, not
+/// one. `flushNow` and `cancel` are for the end of a stream.
+final class TokenCoalescer {
+    let window: TimeInterval
+    var onFlush: (String) -> Void = { _ in }
+    private(set) var flushCount = 0
+    private var buffer = ""
+    private var timer: Task<Void, Never>?
+
+    init(window: TimeInterval) {
+        self.window = window
+    }
+
+    func append(_ token: String) {
+        buffer += token
+        guard timer == nil else { return }
+        timer = Task { [weak self, window] in
+            try? await Task.sleep(for: .seconds(window))
+            guard !Task.isCancelled else { return }
+            self?.timer = nil
+            self?.flushNow()
+        }
+    }
+
+    func flushNow() {
+        timer?.cancel()
+        timer = nil
+        guard !buffer.isEmpty else { return }
+        let text = buffer
+        buffer = ""
+        flushCount += 1
+        onFlush(text)
+    }
+
+    func cancel() {
+        timer?.cancel()
+        timer = nil
+        buffer = ""
+    }
+}
