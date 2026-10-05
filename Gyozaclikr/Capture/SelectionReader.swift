@@ -72,7 +72,8 @@ nonisolated enum WordBoundary {
         }
         scalarAt[utf16.count] = scalars.count
         let here = scalarAt[offset]
-        guard isWordScalar(scalars[here]) else { return nil }
+        // A letter, or a joiner between two letters (the hyphen of "on-device").
+        guard joins(scalars, at: here) else { return nil }
         var lower = here
         while lower > 0, joins(scalars, at: lower - 1) { lower -= 1 }
         var upper = here + 1
