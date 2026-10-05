@@ -157,11 +157,16 @@ nonisolated struct OllamaEngine: LanguageEngine {
     let kind: EngineKind = .ollama
     let capabilities: Set<EngineCapability> = [.text, .image]
 
-    /// Settings are read per call, so a host change in Settings applies at once.
-    private let defaults: UserDefaults
+    /// Settings are read per call, so a host change in Settings applies at
+    /// once. A suite name, not a `UserDefaults`, so the engine stays Sendable.
+    private let suiteName: String?
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+    init(suiteName: String? = nil) {
+        self.suiteName = suiteName
+    }
+
+    private var defaults: UserDefaults {
+        suiteName.flatMap { UserDefaults(suiteName: $0) } ?? .standard
     }
 
     var host: String { OllamaRequest.normalisedHost(defaults.string(forKey: SettingsKey.ollamaHost)) }

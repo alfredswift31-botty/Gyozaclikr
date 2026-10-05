@@ -27,9 +27,9 @@ nonisolated enum SelectionBudget {
     /// still a summary. A rewrite of a long text is not chunked; it is refused
     /// with the two numbers so the user can select less.
     static func isSummaryLike(_ prompt: String) -> Bool {
-        let lower = prompt.lowercased()
-        return ["summar", "tl;dr", "tldr", "gist", "key points", "main points", "overview", "in brief", "recap"]
-            .contains { lower.contains($0) }
+        // Whole words: "register" contains "gist".
+        prompt.range(of: #"\b(summar\w*|tl;?dr|gist|key points|main points|overview|in brief|recap)\b"#,
+                     options: [.regularExpression, .caseInsensitive]) != nil
     }
 }
 

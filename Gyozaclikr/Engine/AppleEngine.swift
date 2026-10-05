@@ -83,7 +83,8 @@ nonisolated enum AppleErrors {
 }
 
 #if SDK_MACOS27
-extension AppleErrors {
+// `nonisolated` again: an extension does not inherit it from the enum.
+nonisolated extension AppleErrors {
     /// The macOS 27 error family (Xcode 27 builds catch these instead of
     /// `GenerationError`), same sentences. The overflow error carries its own numbers.
     @available(macOS 27, *)

@@ -139,7 +139,10 @@ struct ChunkingTests {
     @Test func onlySummaryPromptsAreChunked() {
         #expect(SelectionBudget.isSummaryLike(Prompts.prompt(for: .summarise)))
         #expect(SelectionBudget.isSummaryLike("Give me the TL;DR"))
+        // "register" contains "gist"; only whole words count.
         #expect(!SelectionBudget.isSummaryLike(Prompts.prompt(for: .formal)))
+        #expect(SelectionBudget.isSummaryLike("what's the gist?"))
+        #expect(!SelectionBudget.isSummaryLike("make it a formal rewrite of the register"))
         #expect(!SelectionBudget.isSummaryLike(Prompts.prompt(for: .fix)))
     }
 }
@@ -478,7 +481,7 @@ struct RunnerMeasurementTests {
         defaults.removePersistentDomain(forName: "EngineTests.ollama")
         // A port nothing listens on, so the result is the same with or without Ollama.
         defaults.set("http://127.0.0.1:1", forKey: SettingsKey.ollamaHost)
-        let engine = OllamaEngine(defaults: defaults)
+        let engine = OllamaEngine(suiteName: "EngineTests.ollama")
         let start = Date()
         let status = await engine.status()
         let elapsed = Date().timeIntervalSince(start)
