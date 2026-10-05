@@ -458,11 +458,14 @@ struct ActionsStoreTests {
         pasteboard.clearContents()
         pasteboard.setString("after", forType: .string)
         pasteboard.setData(Data(), forType: PasteboardSnapshot.transientType)
-        snapshot.restore(to: pasteboard)
+        snapshot.restore(to: pasteboard, transient: false)
         #expect(pasteboard.string(forType: .string) == "before")
         #expect(pasteboard.data(forType: PasteboardSnapshot.transientType) == nil)
-        PasteboardSnapshot(items: []).restore(to: pasteboard)
-        #expect(pasteboard.pasteboardItems?.isEmpty == true)
+        pasteboard.clearContents()
+        let empty = PasteboardSnapshot.take(from: pasteboard)
+        pasteboard.setString("stray", forType: .string)
+        empty.restore(to: pasteboard, transient: false)
+        #expect(pasteboard.string(forType: .string) == nil)
     }
 
     @Test func permissionStatesMap() {

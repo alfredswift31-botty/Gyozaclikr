@@ -104,35 +104,7 @@ enum PasteWriter {
     }
 }
 
-/// Every item and type on a pasteboard, so it can be put back after a paste.
-struct PasteboardSnapshot {
-    /// Marks a pasteboard write that clipboard managers should not record.
-    static let transientType = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
-
-    let items: [[NSPasteboard.PasteboardType: Data]]
-
-    static func take(from pasteboard: NSPasteboard) -> PasteboardSnapshot {
-        let items = (pasteboard.pasteboardItems ?? []).map { item -> [NSPasteboard.PasteboardType: Data] in
-            var data: [NSPasteboard.PasteboardType: Data] = [:]
-            for type in item.types {
-                if let bytes = item.data(forType: type) { data[type] = bytes }
-            }
-            return data
-        }
-        return PasteboardSnapshot(items: items)
-    }
-
-    func restore(to pasteboard: NSPasteboard) {
-        pasteboard.clearContents()
-        guard !items.isEmpty else { return }
-        let restored = items.map { entry -> NSPasteboardItem in
-            let item = NSPasteboardItem()
-            for (type, data) in entry { item.setData(data, forType: type) }
-            return item
-        }
-        pasteboard.writeObjects(restored)
-    }
-}
+// The pasteboard snapshot lives in Capture (SelectionReader.swift): one type, used by the ⌘C read and the ⌘V write.
 
 /// A synthetic ⌘V at the HID tap, which the frontmost app receives.
 enum KeyPress {
