@@ -78,5 +78,5 @@ enum BoxColor {
     static let tertiary = Color(nsColor: .tertiaryLabelColor)
     static let accent = Color.accentColor
     /// Opaque fallback for the material (Reduce Transparency, snapshots).
-    static let opaque = Color(nsColor: .windowBackgroundColor)
+    static let opaque = Theme.surface
 }
