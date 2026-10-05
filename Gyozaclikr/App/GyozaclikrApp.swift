@@ -1,18 +1,27 @@
 import SwiftUI
 
-/// The scaffold entry point: a menu-bar item that proves the project builds,
-/// signs and launches. The real coordinator (capture → box → router →
-/// engine → actions) replaces the body once the modules land.
+/// A menu-bar agent: no Dock icon, no main window. The coordinator owns the
+/// status item, the box and every module; the Settings scene is the only
+/// SwiftUI window.
 @main
 struct GyozaclikrApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+
     var body: some Scene {
-        MenuBarExtra("Gyozaclikr", systemImage: "cursorarrow.rays") {
-            Text("Gyozaclikr \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")")
-                .font(Theme.Typeface.meta)
-                .foregroundStyle(Theme.inkSecondary)
-            Divider()
-            Button("Quit Gyozaclikr") { NSApplication.shared.terminate(nil) }
-                .keyboardShortcut("q")
+        Settings {
+            SettingsView(model: delegate.coordinator.settingsModel)
         }
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private(set) var coordinator = Coordinator()
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Nothing to activate: the status item and the hot key are live from init.
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        coordinator.refreshPermissions()
     }
 }

@@ -8,8 +8,8 @@
 	<string>Gyozaclikr asks Notes (and Mail, if you choose silent sending) to save or send what you wrote.</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>Gyozaclikr captures the region of the screen you draw, to read its text and answer questions about it. Nothing is stored or sent anywhere.</string>
-	<key>NSRemindersWriteOnlyAccessUsageDescription</key>
-	<string>Gyozaclikr adds the reminders you ask for. It never reads your existing reminders.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Gyozaclikr adds the reminders you ask for. macOS has no add-only level for reminders, so it asks for full access; the app never reads them.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>Gyozaclikr adds the events you ask for. It never reads your calendar.</string>
 	<key>NSContactsUsageDescription</key>
