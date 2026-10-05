@@ -22,7 +22,7 @@ struct MarkdownView: View {
     private func blockView(_ block: MarkdownLite.Block) -> some View {
         switch block {
         case .paragraph(let runs):
-            Self.text(runs)
+            Self.runs(runs)
                 .font(BoxFont.body)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
@@ -31,7 +31,7 @@ struct MarkdownView: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                         Text("•").font(BoxFont.body).foregroundStyle(.secondary).frame(width: 8, alignment: .trailing)
-                        Self.text(item.inlines).font(BoxFont.body).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                        Self.runs(item.inlines).font(BoxFont.body).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.leading, CGFloat(item.depth) * Theme.Space.l)
                 }
@@ -41,7 +41,7 @@ struct MarkdownView: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                     HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                         Text("\(item.number ?? index + 1).").font(BoxFont.mono).foregroundStyle(.secondary).frame(width: 16, alignment: .trailing)
-                        Self.text(item.inlines).font(BoxFont.body).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                        Self.runs(item.inlines).font(BoxFont.body).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.leading, CGFloat(item.depth) * Theme.Space.l)
                 }
@@ -58,7 +58,7 @@ struct MarkdownView: View {
     }
 
     /// One `Text` from the runs, so bold and code flow inside a line.
-    static func text(_ runs: [MarkdownLite.Inline]) -> Text {
+    static func runs(_ runs: [MarkdownLite.Inline]) -> Text {
         runs.reduce(Text("")) { result, run in
             switch run {
             case .text(let s): result + Text(s)
