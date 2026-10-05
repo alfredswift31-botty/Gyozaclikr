@@ -23,7 +23,7 @@ nonisolated enum ConfirmationRows {
         case .createEvent(let title, let start, let end, let location, let whenText):
             [Row(label: "Title", value: title),
              Row(label: "Starts", value: when(start, whenText)),
-             Row(label: "Ends", value: end.map(format) ?? "–"),
+             Row(label: "Ends", value: end.map { format($0) } ?? "–"),
              Row(label: "Where", value: location ?? "–")]
         case .saveNote(let title, let body):
             [Row(label: "Title", value: title),
