@@ -10,7 +10,16 @@ Status: 1.0 built and released from CI; not yet verified on a Mac. See `docs/BRI
 - Questions about a picture: Live Text for the words, Apple's model on macOS 27 for a description, Ollama's Qwen3-VL when you ask for it.
 - Not: identifying people, finding where to buy something, checking facts. The on-device model is a 3B-parameter transformer of text, not a source of truth, and the app treats it that way.
 
+## How to use it
+1. Select text in any app (or nothing, to define the word under the pointer).
+2. Press **⌃Space**. The box appears under the selection. Hold ⌃Space instead to draw a region of the screen.
+3. Press ⌘1–⌘8 for a chip (Fix, Shorter, Formal, Casual, Summarise, List, Reply, Remind) or type what you want and press Enter.
+4. Replace puts the answer back where the text came from; Copy, Insert below and Send… are next to it. Esc closes.
+
+The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so; record any combination you like there.
+
 ## Versions
+- **1.0.1** (6 Oct 2026): Settings opens (it did not from a menu-bar agent); the shortcut falls back when macOS holds ⌃Space, and Settings says so.
 - **1.0** (6 Oct 2026): first release. Hot key and Services entry, selection reading with a ⌘C fallback, region capture with Live Text, the box with eight chips and free text, Apple's on-device model (text; images on macOS 27), Ollama as the labelled second engine, reminders, events, notes, mail compose, search, Shortcuts, dictionary, history, Engines and Permissions panes.
 
 ## Install

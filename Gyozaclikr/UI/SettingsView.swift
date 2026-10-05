@@ -12,6 +12,8 @@ final class SettingsModel {
     var permissions: [Permission: PermissionState] = [:]
     var history: [HistoryEntry] = []
     var shortcutText: String = HotKeyText.describe(keyCode: HotKeyText.defaultKeyCode, carbonModifiers: HotKeyText.defaultModifiers)
+    /// False when the system holds the combination (Carbon refuses it silently).
+    var hotKeyRegistered = true
     let defaults: UserDefaults
 
     var onRecordShortcut: (_ keyCode: UInt32, _ carbonModifiers: UInt32) -> Void = { _, _ in }
@@ -117,9 +119,11 @@ private struct GeneralPane: View {
         } header: {
             Text("Summon").labelStyle()
         } footer: {
-            Text("Tap the shortcut for the current selection; hold it for a screen region. The pill arrives in 1.1.")
+            Text(model.hotKeyRegistered
+                 ? "Tap the shortcut for the current selection; hold it for a screen region. The pill arrives in 1.1."
+                 : "macOS holds this combination (⌃Space switches keyboard languages when more than one is on). Record another one.")
                 .font(Theme.Typeface.meta)
-                .foregroundStyle(Theme.inkSecondary)
+                .foregroundStyle(model.hotKeyRegistered ? Theme.inkSecondary : Theme.live)
         }
 
         Section {

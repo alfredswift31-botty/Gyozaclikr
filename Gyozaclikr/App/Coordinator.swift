@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 /// The one object that knows every module: it turns a gesture into a
@@ -38,7 +39,7 @@ final class Coordinator {
         actions = ActionPerformer { answer in AnswerWindow.show(answer: answer.text) }
         panel = BoxPanel(model: model)
         wireCallbacks()
-        hotKey.register()
+        registerHotKey()
         services.register()
         refreshPermissions()
         refreshMenu()
@@ -326,8 +327,8 @@ final class Coordinator {
 
     func openSettings() {
         settingsModel.history = history.entries
-        NSApp.activate()
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        refreshPermissions()
+        SettingsWindow.shared.show(model: settingsModel)
     }
 
     func openHistory() {
@@ -366,8 +367,20 @@ final class Coordinator {
         }
     }
 
+    /// The saved combination, else the fallbacks: ⌃Space is also macOS's
+    /// input-source switch when two keyboard languages are on, and a taken
+    /// combination fails silently in Carbon.
+    private func registerHotKey() {
+        if hotKey.register() { return }
+        for (code, modifiers) in [(HotKey.defaultKeyCode, UInt32(controlKey | optionKey)), (HotKey.defaultKeyCode, UInt32(shiftKey | cmdKey))]
+        where hotKey.register(keyCode: code, modifiers: modifiers) {
+            return
+        }
+    }
+
     private func refreshMenu() {
-        settingsModel.shortcutText = hotKey.displayString
+        settingsModel.shortcutText = hotKey.isRegistered ? hotKey.displayString : "\(hotKey.displayString) is taken: change it in Settings"
+        settingsModel.hotKeyRegistered = hotKey.isRegistered
         statusItem.menuModel = StatusMenuModel(shortcutText: hotKey.displayString, diagnostics: diagnostics,
                                                permissions: permissions, hasLastAnswer: lastAnswer != nil)
     }
