@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Gyozaclikr asks Notes (and Mail, if you choose silent sending) to save or send what you wrote.</string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>Gyozaclikr captures the region of the screen you draw, to read its text and answer questions about it. Nothing is stored or sent anywhere.</string>
+	<key>NSRemindersWriteOnlyAccessUsageDescription</key>
+	<string>Gyozaclikr adds the reminders you ask for. It never reads your existing reminders.</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>Gyozaclikr adds the events you ask for. It never reads your calendar.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Gyozaclikr looks up an address when you ask it to mail a person by name.</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Ask Gyozaclikr</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>askGyozaclikr</string>
+			<key>NSPortName</key>
+			<string>Gyozaclikr</string>
+			<key>NSSendTypes</key>
+			<array>
+				<string>public.utf8-plain-text</string>
+				<string>public.png</string>
+				<string>public.tiff</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
