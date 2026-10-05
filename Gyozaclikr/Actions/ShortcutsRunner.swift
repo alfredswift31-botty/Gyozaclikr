@@ -13,7 +13,7 @@ nonisolated enum ShortcutsCommand {
 /// Runs a Shortcut with the selection as its input file, with a 60 s limit.
 /// A Shortcut can do anything, which is why the card confirms the name.
 final class ShortcutsRunner {
-    static let timeout: Duration = .seconds(60)
+    nonisolated static let timeout: Duration = .seconds(60)
 
     func run(name: String, input: String, timeout: Duration = ShortcutsRunner.timeout) async -> ActionOutcome {
         let directory = FileManager.default.temporaryDirectory
