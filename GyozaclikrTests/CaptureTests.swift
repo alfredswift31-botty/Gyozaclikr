@@ -160,7 +160,7 @@ struct SelectionHelperTests {
         #expect(AXEditability.isEditable(role: kAXTextAreaRole, selectedTextSettable: true))
         #expect(!AXEditability.isEditable(role: kAXTextAreaRole, selectedTextSettable: false))
         // Chromium says everything is settable; a web area is still not a field.
-        #expect(!AXEditability.isEditable(role: kAXWebAreaRole, selectedTextSettable: true))
+        #expect(!AXEditability.isEditable(role: "AXWebArea", selectedTextSettable: true))
         #expect(!AXEditability.isEditable(role: nil, selectedTextSettable: true))
     }
 
