@@ -52,7 +52,7 @@ struct BoxPlacementTests {
                 let anchor = CGRect(x: CGFloat(x), y: CGFloat(y), width: 200, height: 30)
                 let frame = BoxPlacement.frame(size: size, anchor: .selection(anchor), screenVisible: screen)
                 #expect(!frame.intersects(anchor), "anchor \(anchor) got \(frame)")
-                #expect(frame.minX >= 16 && frame.maxX <= 1440 - 16 && frame.minY >= 16 && frame.maxY <= 875 - 16)
+                #expect(frame.minX >= 16 && frame.maxX <= 1424 && frame.minY >= 16 && frame.maxY <= 859)
             }
         }
     }
@@ -258,6 +258,7 @@ struct UISnapshotTests {
     private static func sheet(_ model: BoxModel) -> some View {
         BoxView(model: model)
             .environment(\.boxOpaque, true)
+            .environment(\.boxAnimates, true)
             .shadow(color: .black.opacity(0.12), radius: 10, y: 3)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Theme.canvas)
@@ -314,7 +315,7 @@ struct UISnapshotTests {
 
     @Test(arguments: [false, true])
     func settingsEngines(dark: Bool) throws {
-        let height: CGFloat = 560
+        let height: CGFloat = 640
         try Snapshot.render(SettingsView(model: UIFixtures.settingsModel(), tab: .engines, height: height),
                             name: "10-settings-engines", size: CGSize(width: Theme.Settings.width, height: height), dark: dark)
     }

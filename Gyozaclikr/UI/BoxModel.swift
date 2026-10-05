@@ -176,6 +176,8 @@ final class BoxModel {
         self.status = status
         self.engine = engine
         lastRequest = request
+        // The box shows what was asked; ↑ brings it back later.
+        input = request
         answer = ""
         failure = nil
         elapsed = 0

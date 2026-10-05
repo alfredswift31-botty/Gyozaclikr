@@ -92,6 +92,9 @@ enum UIFixtures {
         Should any of the assumptions appear incorrect, I would welcome a fifteen-minute conversation before then.
         """
 
+    /// The composed mail, without the greeting, so the card's two body lines carry content.
+    static let mailBody = "I am writing to ask whether you have had an opportunity to review the Q4 planning document sent on Tuesday. We would need your figures for the hardware line by Friday so that Finance can close the forecast."
+
     static let halfAnswer = "Dear Dana,\n\nI am writing to ask whether you have had an opportunity to review the Q4 planning document sent on"
 
     static let listAnswer = """
@@ -134,7 +137,7 @@ enum UIFixtures {
         case .confirming:
             model.begin(status: "Drafting…", engine: .apple, request: "send this to dana@example.com in formal style")
             model.confirm(.sendMail(to: ["dana@example.com"], subject: "Q4 planning: hardware numbers by Friday",
-                                    body: formalAnswer))
+                                    body: mailBody))
         case .asking:
             model.begin(status: "Reading…", engine: .apple, request: "send this to dana")
             model.ask("Which Dana?", options: ["dana@example.com", "dana.k@work.example", "Someone else…"])

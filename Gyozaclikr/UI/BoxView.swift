@@ -13,6 +13,7 @@ struct BoxView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.boxOpaque) private var opaque
+    @Environment(\.boxAnimates) private var animates
 
     var body: some View {
         let hairline: CGFloat = contrast == .increased ? 1.5 : 1
@@ -26,7 +27,7 @@ struct BoxView: View {
                 input
                 EngineRow(label: model.engineLabel)
                 StatusLine(status: model.status, elapsed: model.engine == .ollama ? model.elapsed : nil,
-                           full: !model.answer.isEmpty, reduceMotion: reduceMotion)
+                           full: !model.answer.isEmpty, reduceMotion: animates.map { !$0 } ?? reduceMotion)
                 if !model.answer.isEmpty { answer }
             case .done:
                 input
@@ -343,10 +344,21 @@ nonisolated struct BoxOpaqueKey: EnvironmentKey {
     static let defaultValue = false
 }
 
+/// Snapshots decide the accent bar themselves: nil follows Reduce Motion,
+/// true draws the bar, false the dot.
+nonisolated struct BoxAnimatesKey: EnvironmentKey {
+    static let defaultValue: Bool? = nil
+}
+
 extension EnvironmentValues {
     var boxOpaque: Bool {
         get { self[BoxOpaqueKey.self] }
         set { self[BoxOpaqueKey.self] = newValue }
+    }
+
+    var boxAnimates: Bool? {
+        get { self[BoxAnimatesKey.self] }
+        set { self[BoxAnimatesKey.self] = newValue }
     }
 }
 
