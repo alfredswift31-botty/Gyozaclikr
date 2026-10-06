@@ -348,6 +348,7 @@ struct UISnapshotTests {
     }
 }
 
+@MainActor
 struct PointerCompanionTests {
     @Test func theGyozaSitsBelowRightOfThePointer() {
         let origin = PointerCompanion.origin(forPointer: CGPoint(x: 100, y: 500))
