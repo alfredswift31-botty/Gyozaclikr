@@ -80,20 +80,24 @@ final class BoxPanel: NSPanel {
         self.anchor = anchor
         if !isVisible { shownAt = Date() }
         host.layoutSubtreeIfNeeded()
-        place(size: host.fittingSize)
-        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        if !isVisible {
-            alphaValue = reduceMotion ? 1 : 0
-        }
-        makeKeyAndOrderFront(nil)
-        if !reduceMotion, alphaValue < 1 {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = Theme.Box.fade
-                animator().alphaValue = 1
-            }
-        }
+        var size = host.fittingSize
+        // A hosting view that has not laid out yet reports nothing; never show a zero box.
+        if size.width < 100 || size.height < 40 { size = CGSize(width: Theme.Box.width, height: 140) }
+        place(size: size)
+        // No fade: a window animation that fails to run would leave the box
+        // on screen at alpha 0, which is indistinguishable from absent.
+        alphaValue = 1
+        orderFrontRegardless()
+        makeKey()
         if let inputField { makeFirstResponder(inputField) }
         installMonitors()
+    }
+
+    /// "visible yes · key yes · frame 412,618 360×184 · screen 1440×900 · state empty": what the box did.
+    var diagnosticLine: String {
+        let f = frame
+        let screen = NSScreen.screens.first { $0.frame.intersects(f) }?.frame.size ?? .zero
+        return "visible \(isVisible ? "yes" : "no") · key \(isKeyWindow ? "yes" : "no") · alpha \(alphaValue) · frame \(Int(f.minX)),\(Int(f.minY)) \(Int(f.width))×\(Int(f.height)) · screen \(Int(screen.width))×\(Int(screen.height)) · state \(model.state)"
     }
 
     func dismiss() {
@@ -104,16 +108,7 @@ final class BoxPanel: NSPanel {
             orderOut(nil)
             return
         }
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = Theme.Box.fade
-            animator().alphaValue = 0
-        }, completionHandler: { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self, self.anchor == nil else { return }
-                self.orderOut(nil)
-                self.alphaValue = 1
-            }
-        })
+        orderOut(nil)
     }
 
     /// Re-anchor after the hosting view changed the window's size, so a

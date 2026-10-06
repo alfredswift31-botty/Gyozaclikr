@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import OSLog
 import SwiftUI
 
 /// The one object that knows every module: it turns a gesture into a
@@ -88,6 +89,26 @@ final class Coordinator {
         model.engine = preferredEngine(for: selection)
         companion.boxShown()
         panel.show(anchoredTo: anchor)
+        recordBoxDiagnostics(after: "summon")
+    }
+
+    private static let log = Logger(subsystem: "com.gyoza.Gyozaclikr", category: "box")
+    private static let clock: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }()
+
+    /// 300 ms after a show: what the panel is doing, for the Engines pane
+    /// and the unified log (`log show --predicate 'subsystem == "com.gyoza.Gyozaclikr"' --last 10m`).
+    private func recordBoxDiagnostics(after event: String) {
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard let self else { return }
+            let line = "\(event) \(Self.clock.string(from: Date())) · \(panel.diagnosticLine) · hotkey \(hotKey.isRegistered ? hotKey.displayString : "unregistered")"
+            settingsModel.boxDiagnostics = line
+            Self.log.notice("\(line, privacy: .public)")
+        }
     }
 
     private func readSelection() async {

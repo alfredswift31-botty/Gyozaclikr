@@ -19,6 +19,7 @@ Status: 1.0 built and released from CI; not yet verified on a Mac. See `docs/BRI
 A small olive gyoza floats beside the pointer while the app is running, so you can see it is alive; it steps aside while the box is open. The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so; record any combination you like there.
 
 ## Versions
+- **1.0.4** (6 Oct 2026): the box appears without a fade; Settings › Engines shows what the box did on the last press, for diagnosis.
 - **1.0.3** (6 Oct 2026): a small olive gyoza floats beside the pointer while the app runs (Settings › General turns it off).
 - **1.0.2** (6 Oct 2026): the first hold of the shortcut crashed the app in the region overlay (an AppKit initialiser calling back into an unimplemented one); fixed. A press now counts as a hold after half a second, not 300 ms.
 - **1.0.1** (6 Oct 2026): Settings opens (it did not from a menu-bar agent); the shortcut falls back when macOS holds ⌃Space, and Settings says so.

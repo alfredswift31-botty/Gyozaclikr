@@ -14,6 +14,8 @@ final class SettingsModel {
     var shortcutText: String = HotKeyText.describe(keyCode: HotKeyText.defaultKeyCode, carbonModifiers: HotKeyText.defaultModifiers)
     /// False when the system holds the combination (Carbon refuses it silently).
     var hotKeyRegistered = true
+    /// What the box did on the last summon, measured 300 ms after it, for the Engines pane.
+    var boxDiagnostics: String = "no summon yet"
     let defaults: UserDefaults
 
     var onRecordShortcut: (_ keyCode: UInt32, _ carbonModifiers: UInt32) -> Void = { _, _ in }
@@ -266,6 +268,16 @@ private struct EnginesPane: View {
                 Spacer()
                 Button("Measure again") { model.onMeasureAgain() }
             }
+        }
+
+        Section {
+            DiagnosticsLine(text: "box: \(model.boxDiagnostics)")
+        } header: {
+            Text("Box").labelStyle()
+        } footer: {
+            Text("What the box did on the last press of the shortcut, 300 ms after it. Share this when the box does not appear.")
+                .font(Theme.Typeface.meta)
+                .foregroundStyle(Theme.inkSecondary)
         }
     }
 }
