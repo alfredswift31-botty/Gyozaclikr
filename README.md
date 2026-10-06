@@ -30,7 +30,7 @@ If the result says it failed to authenticate, run `claude` in Terminal and use `
 A small olive gyoza floats beside the pointer while the app is running, so you can see it is alive; it steps aside while the box is open. The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so; record any combination you like there.
 
 ## Versions
-- **1.1.2** (6 Oct 2026): the ⌘V behind Replace is posted into the source app's process, not at the system level where the box itself held the keyboard.
+- **1.1.2** (6 Oct 2026): the ⌘V behind Replace is posted into the source app's process, not at the system level where the box itself held the keyboard. Replace and Insert below confirmed in an Electron app.
 - **1.1.1** (6 Oct 2026): Replace and Insert below are offered for any text read from an app, by ⌘V where Accessibility cannot write (Electron, web fields); the outcome line says which path ran.
 - **1.1** (6 Oct 2026): Claude as the third engine, through the Claude Code CLI signed in on the Mac (no API key); the engine row is a picker, the choice sticks, and `/apple`, `/local`, `/claude` force one request. Confirmed on the owner's Mac.
 - **1.0.12** (6 Oct 2026): the box can be resized by its corner grip or any edge and keeps that size (⋯ › Automatic size undoes it); fence marks never leak into an answer; follow-ups are told not to repeat an earlier answer.
