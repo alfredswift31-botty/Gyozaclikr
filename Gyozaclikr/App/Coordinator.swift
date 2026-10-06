@@ -27,6 +27,8 @@ final class Coordinator {
     private(set) var panel: BoxPanel!
     let statusItem = StatusItemController()
     let settingsModel = SettingsModel()
+    let companion = PointerCompanion()
+    private var defaultsObserver: NSObjectProtocol?
 
     private(set) var diagnostics = EngineDiagnostics()
     private(set) var permissions: [Permission: PermissionState] = [:]
@@ -43,7 +45,18 @@ final class Coordinator {
         services.register()
         refreshPermissions()
         refreshMenu()
+        companion.setEnabled(Self.pointerGyozaWanted)
+        defaultsObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, companion.isEnabled != Self.pointerGyozaWanted else { return }
+                companion.setEnabled(Self.pointerGyozaWanted)
+            }
+        }
         Task { await measureEngines() }
+    }
+
+    private static var pointerGyozaWanted: Bool {
+        (UserDefaults.standard.object(forKey: SettingsKey.pointerGyoza) as? Bool) ?? true
     }
 
     // MARK: Summoning
@@ -55,6 +68,7 @@ final class Coordinator {
         switch mode {
         case .region:
             panel.dismiss()
+            companion.boxShown()
             Task { await captureRegion() }
         case .given(let selection):
             present(selection, anchor: .pointer(NSEvent.mouseLocation))
@@ -72,6 +86,7 @@ final class Coordinator {
         lastAnswer = nil
         model.present(selection, chips: Self.chips(for: selection), suggested: Self.suggestedChip(for: selection))
         model.engine = preferredEngine(for: selection)
+        companion.boxShown()
         panel.show(anchoredTo: anchor)
     }
 
@@ -102,7 +117,7 @@ final class Coordinator {
         case .success(let selection):
             present(selection, anchor: .region(selection.bounds ?? CGRect(origin: NSEvent.mouseLocation, size: .zero)))
         case .failure(.cancelled):
-            break
+            companion.boxHidden()
         case .failure(let failure):
             present(.none, anchor: .pointer(NSEvent.mouseLocation))
             model.fail(Self.failure(for: failure))
@@ -299,6 +314,7 @@ final class Coordinator {
         model.onClose = { [weak self] in
             self?.current?.cancel()
             self?.panel.dismiss()
+            self?.companion.boxHidden()
         }
         model.onOpenHistory = { [weak self] in self?.openHistory() }
 

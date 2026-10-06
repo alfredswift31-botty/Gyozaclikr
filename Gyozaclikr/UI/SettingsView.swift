@@ -98,11 +98,13 @@ private struct GeneralPane: View {
     let model: SettingsModel
     @State private var openAtLogin = false
     @AppStorage(SettingsKey.pillEnabled) private var pillEnabled = false
+    @AppStorage(SettingsKey.pointerGyoza) private var pointerGyoza = true
     @AppStorage(SettingsKey.historyLimit) private var historyLimit = 50
 
     init(model: SettingsModel) {
         self.model = model
         _pillEnabled = AppStorage(wrappedValue: false, SettingsKey.pillEnabled, store: model.defaults)
+        _pointerGyoza = AppStorage(wrappedValue: true, SettingsKey.pointerGyoza, store: model.defaults)
         _historyLimit = AppStorage(wrappedValue: 50, SettingsKey.historyLimit, store: model.defaults)
     }
 
@@ -114,6 +116,7 @@ private struct GeneralPane: View {
                 }
                 .frame(width: 140)
             }
+            Toggle("Show the olive gyoza beside the pointer", isOn: $pointerGyoza)
             Toggle("Show a pill after a drag selection", isOn: $pillEnabled)
                 .disabled(true)
         } header: {

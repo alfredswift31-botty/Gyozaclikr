@@ -191,7 +191,10 @@ struct BoxModelTests {
         coalescer.append("Hel")
         coalescer.append("lo")
         #expect(flushes.isEmpty)
-        try await Task.sleep(for: .milliseconds(250))
+        // A loaded runner can delay the 40 ms timer well past it: wait up to a second.
+        for _ in 0..<40 where flushes.isEmpty {
+            try await Task.sleep(for: .milliseconds(25))
+        }
         #expect(flushes == ["Hello"])
         #expect(coalescer.flushCount == 1)
         coalescer.append(" there")
@@ -342,5 +345,24 @@ struct UISnapshotTests {
         let height: CGFloat = 400
         try Snapshot.render(SettingsView(model: UIFixtures.settingsModel(), tab: .about, height: height),
                             name: "13-about", size: CGSize(width: Theme.Settings.width, height: height), dark: dark)
+    }
+}
+
+struct PointerCompanionTests {
+    @Test func theGyozaSitsBelowRightOfThePointer() {
+        let origin = PointerCompanion.origin(forPointer: CGPoint(x: 100, y: 500))
+        #expect(origin.x == 114)
+        #expect(origin.y == 500 - 26 - PointerCompanion.size / 2)
+    }
+
+    @Test(arguments: [false, true])
+    func companion(dark: Bool) throws {
+        let sheet = HStack(spacing: 24) {
+            PointerCompanionView()
+            PointerCompanionView().scaleEffect(4).frame(width: 120, height: 120)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        try Snapshot.render(sheet, name: "14-pointer-gyoza", size: CGSize(width: 260, height: 180), dark: dark)
     }
 }

@@ -376,6 +376,8 @@ nonisolated enum SettingsKey {
     static let hotKeyCode = "hotKeyCode"
     static let hotKeyModifiers = "hotKeyModifiers"
     static let pillEnabled = "pillEnabled"
+    /// The olive gyoza beside the pointer while the app runs. On by default.
+    static let pointerGyoza = "pointerGyoza"
     static let ollamaHost = "ollamaHost"
     static let ollamaVisionModel = "ollamaVisionModel"
     static let ollamaTextModel = "ollamaTextModel"
