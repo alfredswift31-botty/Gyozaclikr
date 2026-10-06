@@ -26,27 +26,30 @@ struct BoxView: View {
                 input
                 chipRow
             case .streaming:
-                input
+                thread
                 EngineRow(label: model.engineLabel)
                 StatusLine(status: model.status, elapsed: model.engine == .ollama ? model.elapsed : nil,
                            full: !model.answer.isEmpty, reduceMotion: animates.map { !$0 } ?? reduceMotion)
-                if !model.answer.isEmpty { answer }
-            case .done:
                 input
+            case .done:
+                thread
                 EngineRow(label: model.engineLabel)
-                answer
+                extractionNote
                 ActionRow(model: model)
                 if let outcome = model.outcome { OutcomeLine(outcome: outcome) }
-            case .failed:
                 input
+            case .failed:
+                if !model.turns.isEmpty { thread }
                 FailureLine(model: model)
+                input
             case .confirming:
                 if let proposal = model.proposal {
                     ConfirmationCard(proposal: proposal, onEdit: { model.edit() }, onConfirm: { model.onConfirm(proposal) })
                 }
             case .asking:
-                input
+                if !model.turns.isEmpty { thread }
                 AskingLine(question: model.question, options: model.options, onOption: model.onOption)
+                input
             }
         }
         .padding(Theme.Box.padding)
@@ -103,19 +106,44 @@ struct BoxView: View {
         }
     }
 
-    private var answer: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+    /// The conversation: each request in the secondary colour, its answer
+    /// below, a hairline between turns. Scrolls past 300 pt and follows the
+    /// live answer. The whole thread is the "answer" the owner reads.
+    private var thread: some View {
+        ScrollViewReader { proxy in
             ScrollView(.vertical) {
-                MarkdownView(text: model.answer)
-                    .textSelection(.enabled)
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    ForEach(Array(model.turns.enumerated()), id: \.element.id) { index, turn in
+                        if index > 0 { Rectangle().fill(BoxColor.hairline).frame(height: 1) }
+                        Text(turn.request)
+                            .font(BoxFont.body)
+                            .foregroundStyle(BoxColor.secondary)
+                            .textSelection(.enabled)
+                        if let failure = turn.failure {
+                            Text(failure)
+                                .font(BoxFont.body)
+                                .foregroundStyle(BoxColor.secondary)
+                        } else if !turn.answer.isEmpty {
+                            MarkdownView(text: turn.answer)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    Color.clear.frame(height: 1).id("end")
+                }
             }
-            .frame(maxHeight: 264)
+            .frame(maxHeight: 300)
             .fixedSize(horizontal: false, vertical: true)
-            if model.answerKind == .extraction, model.dropped > 0 {
-                Text("\(model.kept) kept · \(model.dropped) dropped: no quote in the selection")
-                    .font(BoxFont.mono)
-                    .foregroundStyle(BoxColor.tertiary)
-            }
+            .onChange(of: model.answer) { proxy.scrollTo("end", anchor: .bottom) }
+            .onChange(of: model.turns.count) { proxy.scrollTo("end", anchor: .bottom) }
+        }
+    }
+
+    @ViewBuilder
+    private var extractionNote: some View {
+        if model.answerKind == .extraction, model.dropped > 0 {
+            Text("\(model.kept) kept · \(model.dropped) dropped: no quote in the selection")
+                .font(BoxFont.mono)
+                .foregroundStyle(BoxColor.tertiary)
         }
     }
 }

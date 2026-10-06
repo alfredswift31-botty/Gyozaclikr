@@ -272,6 +272,14 @@ struct UISnapshotTests {
     }
 
     @Test(arguments: [false, true])
+    func boxThread(dark: Bool) throws {
+        let model = UIFixtures.model(.done)
+        model.begin(status: "Rewriting…", engine: .apple, request: "shorter")
+        model.finish(Answer(text: "Dana, could you send the hardware numbers by Friday so Finance can close the forecast?", engine: .apple))
+        try Self.box(model, name: "15-box-thread", height: 420, dark: dark)
+    }
+
+    @Test(arguments: [false, true])
     func boxEmptyText(dark: Bool) throws {
         try Self.box(UIFixtures.model(.empty), name: "01-box-empty-text", height: 184, dark: dark)
     }
@@ -365,5 +373,36 @@ struct PointerCompanionTests {
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         try Snapshot.render(sheet, name: "14-pointer-gyoza", size: CGSize(width: 260, height: 180), dark: dark)
+    }
+}
+
+@MainActor
+struct ThreadTests {
+    @Test func turnsStackAndTheFieldClears() {
+        let model = UIFixtures.model(.empty)
+        model.begin(status: "Working…", engine: .apple, request: "what is this")
+        #expect(model.input.isEmpty)
+        #expect(model.turns.count == 1)
+        model.append(token: "An inv")
+        model.finish(Answer(text: "An invoice.", engine: .apple))
+        #expect(model.turns.last?.answer == "An invoice.")
+        #expect(model.placeholder == "Ask a follow-up…")
+        #expect(model.width == Theme.Box.wideWidth)
+        model.begin(status: "Working…", engine: .ollama, request: "who issued it")
+        model.fail(.refused)
+        #expect(model.turns.count == 2)
+        #expect(model.turns.last?.failure == EngineFailure.refused.message)
+        model.present(UIFixtures.textSelection, chips: [], suggested: nil)
+        #expect(model.turns.isEmpty)
+    }
+
+    @Test func followUpsCarryTheEarlierTurns() {
+        var first = Turn(request: "what is this", engine: .apple); first.answer = "An invoice for 1,284."
+        var failed = Turn(request: "who is this", engine: .apple); failed.failure = "I don't identify people."
+        let prompt = Coordinator.contextualise("is it overdue?", turns: [first, failed])
+        #expect(prompt.hasPrefix("Earlier in this conversation:\nUser: what is this\nAssistant: An invoice for 1,284."))
+        #expect(prompt.hasSuffix("The user now asks: is it overdue?"))
+        #expect(!prompt.contains("who is this"), "failed turns carry nothing")
+        #expect(Coordinator.contextualise("summarise", turns: []) == "summarise")
     }
 }

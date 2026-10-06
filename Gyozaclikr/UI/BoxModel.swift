@@ -15,8 +15,24 @@ nonisolated enum BoxState: Hashable, Sendable {
 /// Everything the card shows, in one observable object the coordinator
 /// writes and the views read. The coordinator sets the callbacks; the box
 /// never performs anything itself.
+/// One exchange in the box: what was asked and what came back.
+nonisolated struct Turn: Identifiable, Hashable, Sendable {
+    let id: UUID
+    var request: String
+    var answer: String
+    var engine: EngineKind
+    /// The sentence shown when the turn failed instead of answering.
+    var failure: String?
+
+    init(request: String, engine: EngineKind) {
+        id = UUID(); self.request = request; answer = ""; self.engine = engine
+    }
+}
+
 @Observable
 final class BoxModel {
+    /// The conversation so far, oldest first; the last turn is the live one.
+    private(set) var turns: [Turn] = []
     var state: BoxState = .hidden
     var selection: Selection = .none
     var input: String = ""
@@ -85,10 +101,11 @@ final class BoxModel {
 
     // MARK: Derived, for the views
 
-    /// 360 pt, or 480 while an answer is on screen.
-    var width: CGFloat { state.isWide ? Theme.Box.wideWidth : Theme.Box.width }
+    /// 360 pt, or 480 once the conversation has a turn.
+    var width: CGFloat { state.isWide || !turns.isEmpty ? Theme.Box.wideWidth : Theme.Box.width }
 
     var placeholder: String {
+        if !turns.isEmpty { return "Ask a follow-up…" }
         switch selection.kind {
         case .image: "Ask about this image…"
         case .word: "Define \(selection.word ?? "this word")…"
@@ -161,6 +178,7 @@ final class BoxModel {
         self.chips = chips
         self.suggestedChip = suggested
         isEditableSource = selection.isEditable
+        turns = []
         input = ""
         answer = ""
         answerKind = .text
@@ -181,8 +199,9 @@ final class BoxModel {
         self.status = status
         self.engine = engine
         lastRequest = request
-        // The box shows what was asked; ↑ brings it back later.
-        input = request
+        // The request joins the thread; the field clears for the next one (↑ brings it back).
+        turns.append(Turn(request: request, engine: engine))
+        input = ""
         answer = ""
         failure = nil
         elapsed = 0
@@ -199,6 +218,7 @@ final class BoxModel {
     func setAnswer(_ text: String) {
         coalescer.cancel()
         answer = text
+        syncLastTurn()
     }
 
     func finish(_ result: Answer) {
@@ -208,12 +228,22 @@ final class BoxModel {
         engine = result.engine
         kept = result.kept
         dropped = result.dropped
+        syncLastTurn()
         state = .done
+    }
+
+    private func syncLastTurn() {
+        guard !turns.isEmpty else { return }
+        turns[turns.count - 1].answer = answer
+        turns[turns.count - 1].engine = engine
     }
 
     func fail(_ failure: EngineFailure) {
         coalescer.flushNow()
         self.failure = failure
+        if let last = turns.indices.last, turns[last].answer.isEmpty {
+            turns[last].failure = failure.message
+        }
         state = .failed
     }
 
@@ -312,6 +342,7 @@ final class BoxModel {
 
     private func flushed(_ text: String) {
         answer += text
+        syncLastTurn()
         // A polite live region, one sentence at a time.
         let sentences = answer.split(whereSeparator: { ".!?".contains($0) })
         if sentences.count > announcedSentences + 1 {

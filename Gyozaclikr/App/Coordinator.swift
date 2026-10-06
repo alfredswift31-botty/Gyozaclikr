@@ -230,17 +230,31 @@ final class Coordinator {
         current = Task { await execute(route, request: request) }
     }
 
+    /// Earlier turns, so a follow-up ("shorter", "and in French?") reads
+    /// as part of one conversation. Chips always act on the selection alone.
+    static func contextualise(_ prompt: String, turns: [Turn], limit: Int = 2_000) -> String {
+        let answered = turns.filter { !$0.answer.isEmpty && $0.failure == nil }.suffix(4)
+        guard !answered.isEmpty else { return prompt }
+        var lines: [String] = []
+        for turn in answered {
+            lines.append("User: " + turn.request)
+            lines.append("Assistant: " + String(turn.answer.prefix(limit / answered.count)))
+        }
+        return "Earlier in this conversation:\n" + lines.joined(separator: "\n") + "\n\nThe user now asks: " + prompt
+    }
+
     private func execute(_ route: Route, request: Request) async {
         let label = request.chip?.title ?? request.text
+        let history = request.chip == nil ? model.turns : []
         switch route {
         case .transform(let prompt, let kind, let status):
-            await stream(engine(kind).transform(prompt: prompt, selection: request.selection), engine: kind, status: status, request: label)
+            await stream(engine(kind).transform(prompt: Self.contextualise(prompt, turns: history), selection: request.selection), engine: kind, status: status, request: label)
         case .extract(let prompt, let kind):
             let lower = prompt.lowercased()
             let csv = lower.contains("csv") || lower.contains("table")
             await stream(engine(kind).extract(prompt: prompt, selection: request.selection, asCSV: csv), engine: kind, status: "Extracting…", request: label)
         case .describeImage(let question, let kind):
-            await stream(engine(kind).describeImage(question: question, selection: request.selection), engine: kind, status: "Looking…", request: label)
+            await stream(engine(kind).describeImage(question: Self.contextualise(question, turns: history), selection: request.selection), engine: kind, status: "Looking…", request: label)
         case .perform(let proposal):
             await propose(proposal)
         case .composeThen(let prompt, let kind, let status, let target):
@@ -248,7 +262,7 @@ final class Coordinator {
             guard !Task.isCancelled, let answer = lastAnswer else { return }
             await propose(Self.proposal(for: target, text: answer.text, selection: request.selection))
         case .agent(let kind):
-            await stream(engine(kind).agent(request: request.text, selection: request.selection), engine: kind, status: "Working…", request: label)
+            await stream(engine(kind).agent(request: Self.contextualise(request.text, turns: history), selection: request.selection), engine: kind, status: "Working…", request: label)
         case .define(let word):
             if let definition = actions.define(word) {
                 model.begin(status: "", engine: .apple, request: label)

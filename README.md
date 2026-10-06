@@ -15,11 +15,12 @@ Status: 1.0 built and released from CI; not yet verified on a Mac. See `docs/BRI
 2. Press **⌃Space**. The box appears under the selection. Hold ⌃Space instead to draw a region of the screen.
 3. Press ⌘1–⌘8 for a chip (Fix, Shorter, Formal, Casual, Summarise, List, Reply, Remind) or type what you want and press Enter.
 4. Replace puts the answer back where the text came from; Copy, Insert below and Send… are next to it. Drag the box anywhere by its background; the × or Esc closes it.
+5. Keep typing: each question and answer stacks in the box as a conversation, and a follow-up (“make it shorter”, “now in French”) knows what came before.
 
 A small olive gyoza floats beside the pointer while the app is running, so you can see it is alive; it steps aside while the box is open. The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so; record any combination you like there.
 
 ## Versions
-- **1.0.9** (6 Oct 2026): the box can be dragged anywhere, stays until its × (or Esc) closes it, and no longer vanishes on a click elsewhere; image descriptions from Apple's model say what a picture is for when that is clear; an Ask Ollama button under them gives the deeper read.
+- **1.0.9** (6 Oct 2026): the box keeps a running conversation (follow-ups carry the earlier turns); it can be dragged anywhere, stays until its × (or Esc) closes it, and no longer vanishes on a click elsewhere; image descriptions from Apple's model say what a picture is for when that is clear; an Ask Ollama button under them gives the deeper read.
 - **1.0.8** (6 Oct 2026): the box's height follows its content exactly; the action row is no longer cut off.
 - **1.0.7** (6 Oct 2026): the box widens with its answer instead of clipping it.
 - **1.0.6** (6 Oct 2026): the selection is read before the box opens; the box had been taking keyboard focus first and reading itself.
