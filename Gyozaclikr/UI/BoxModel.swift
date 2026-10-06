@@ -217,19 +217,26 @@ final class BoxModel {
     /// Replace the answer at once (a chunk, a corrected text).
     func setAnswer(_ text: String) {
         coalescer.cancel()
-        answer = text
+        answer = Self.unfenced(text)
         syncLastTurn()
     }
 
     func finish(_ result: Answer) {
         coalescer.flushNow()
-        answer = result.text
+        answer = Self.unfenced(result.text)
         answerKind = result.kind
         engine = result.engine
         kept = result.kept
         dropped = result.dropped
         syncLastTurn()
         state = .done
+    }
+
+    /// The fence marks around the selection (`Prompts.wrap`) are the
+    /// prompt's, never the answer's; the model echoed a closing one on the
+    /// owner's Mac (an OCR explanation ending in ⟫).
+    nonisolated static func unfenced(_ text: String) -> String {
+        text.contains("⟪") || text.contains("⟫") ? text.replacingOccurrences(of: "⟪", with: "").replacingOccurrences(of: "⟫", with: "") : text
     }
 
     private func syncLastTurn() {
@@ -341,7 +348,7 @@ final class BoxModel {
     // MARK: Private
 
     private func flushed(_ text: String) {
-        answer += text
+        answer += Self.unfenced(text)
         syncLastTurn()
         // A polite live region, one sentence at a time.
         let sentences = answer.split(whereSeparator: { ".!?".contains($0) })

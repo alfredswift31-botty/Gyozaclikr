@@ -401,8 +401,19 @@ struct ThreadTests {
         var failed = Turn(request: "who is this", engine: .apple); failed.failure = "I don't identify people."
         let prompt = Coordinator.contextualise("is it overdue?", turns: [first, failed])
         #expect(prompt.hasPrefix("Earlier in this conversation:\nUser: what is this\nAssistant: An invoice for 1,284."))
-        #expect(prompt.hasSuffix("The user now asks: is it overdue?"))
+        #expect(prompt.contains("The user now asks: is it overdue?\nAnswer this new question; do not repeat an earlier answer."))
         #expect(!prompt.contains("who is this"), "failed turns carry nothing")
         #expect(Coordinator.contextualise("summarise", turns: []) == "summarise")
+    }
+
+    @Test func fenceMarksNeverReachTheAnswer() {
+        #expect(BoxModel.unfenced("where road works are taking place.⟫") == "where road works are taking place.")
+        #expect(BoxModel.unfenced("⟪quoted⟫ back") == "quoted back")
+        #expect(BoxModel.unfenced("plain") == "plain")
+        let model = UIFixtures.model(.empty)
+        model.begin(engine: .apple, status: "Working…")
+        model.finish(Answer(text: "done.⟫", kind: .text, engine: .apple))
+        #expect(model.answer == "done.")
+        #expect(model.turns.last?.answer == "done.")
     }
 }

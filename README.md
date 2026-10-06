@@ -20,6 +20,7 @@ Status: 1.0 built and released from CI; not yet verified on a Mac. See `docs/BRI
 A small olive gyoza floats beside the pointer while the app is running, so you can see it is alive; it steps aside while the box is open. The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so; record any combination you like there.
 
 ## Versions
+- **1.0.12** (6 Oct 2026): fence marks never leak into an answer; follow-ups are told not to repeat an earlier answer.
 - **1.0.11** (6 Oct 2026): questions the selection does not answer are answered from the model's general knowledge, prefixed “From general knowledge:”; rewrites still stay inside the selection.
 - **1.0.10** (6 Oct 2026): the box actually drags (1.0.9's drag never started through the SwiftUI host); Send… composes in whatever handles mailto:, Gmail in Chrome included, instead of only activating it. Both confirmed on the owner's Mac. If Send… opens Chrome without a compose window, allow Gmail as Chrome's mailto handler once (the diamond icon in Gmail's address bar).
 - **1.0.9** (6 Oct 2026): the box keeps a running conversation (follow-ups carry the earlier turns); it can be dragged anywhere, stays until its × (or Esc) closes it, and no longer vanishes on a click elsewhere; image descriptions from Apple's model say what a picture is for when that is clear; an Ask Ollama button under them gives the deeper read.

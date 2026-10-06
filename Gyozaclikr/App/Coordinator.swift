@@ -240,7 +240,9 @@ final class Coordinator {
             lines.append("User: " + turn.request)
             lines.append("Assistant: " + String(turn.answer.prefix(limit / answered.count)))
         }
-        return "Earlier in this conversation:\n" + lines.joined(separator: "\n") + "\n\nThe user now asks: " + prompt
+        return "Earlier in this conversation:\n" + lines.joined(separator: "\n")
+            + "\n\nThe user now asks: " + prompt
+            + "\nAnswer this new question; do not repeat an earlier answer."
     }
 
     private func execute(_ route: Route, request: Request) async {
