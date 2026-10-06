@@ -48,8 +48,8 @@ final class Coordinator {
         companion.setEnabled(Self.pointerGyozaWanted)
         defaultsObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, companion.isEnabled != Self.pointerGyozaWanted else { return }
-                companion.setEnabled(Self.pointerGyozaWanted)
+                guard let self, self.companion.isEnabled != Self.pointerGyozaWanted else { return }
+                self.companion.setEnabled(Self.pointerGyozaWanted)
             }
         }
         Task { await measureEngines() }
