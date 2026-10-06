@@ -136,6 +136,8 @@ nonisolated struct TableExtraction {
 nonisolated struct ImageDescription {
     @Guide(description: "what the image mainly shows, one sentence")
     var subject: String
+    @Guide(description: "what it is for or what it explains, one sentence, only when the image makes it clear (a diagram's rule, a chart's claim, a sign's meaning); empty otherwise")
+    var meaning: String
     @Guide(description: "where or in what context, one short sentence; empty if unclear")
     var setting: String
     @Guide(description: "any text that matters, as written; empty if none")
@@ -146,14 +148,17 @@ nonisolated struct ImageDescription {
 
 /// Renders a description's fields as two or three plain sentences.
 nonisolated enum DescriptionText {
-    static func render(subject: String, setting: String, visibleText: String, uncertainty: String) -> String {
+    static func render(subject: String, meaning: String = "", setting: String, visibleText: String, uncertainty: String) -> String {
         var sentences: [String] = []
         func sentence(_ text: String) -> String? {
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty, !["none", "n/a", "nothing", "unclear"].contains(trimmed.lowercased()) else { return nil }
+            var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, !["none", "n/a", "nothing", "unclear", "not applicable"].contains(trimmed.lowercased()) else { return nil }
+            // The model fills fields as fragments; the box shows sentences.
+            trimmed = trimmed.prefix(1).uppercased() + trimmed.dropFirst()
             return trimmed.hasSuffix(".") || trimmed.hasSuffix("!") || trimmed.hasSuffix("?") ? trimmed : trimmed + "."
         }
         if let subject = sentence(subject) { sentences.append(subject) }
+        if let meaning = sentence(meaning) { sentences.append(meaning) }
         if let setting = sentence(setting) { sentences.append(setting) }
         if let text = sentence(visibleText) { sentences.append("Text: " + text) }
         if sentences.count < 3, let uncertainty = sentence(uncertainty) { sentences.append(uncertainty) }
@@ -223,7 +228,7 @@ nonisolated struct AppleEngine: LanguageEngine {
                 let question = question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Describe this image." : question
                 let description = try await Self.describeWithAttachment(question: question, image: ImageScaling.downscaled(image))
                 let text = DescriptionText.render(
-                    subject: description.subject, setting: description.setting,
+                    subject: description.subject, meaning: description.meaning, setting: description.setting,
                     visibleText: description.visibleText, uncertainty: description.uncertainty
                 )
                 continuation.yield(.token(text))

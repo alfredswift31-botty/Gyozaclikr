@@ -386,7 +386,10 @@ struct AgentPolicyTests {
 struct DescriptionTextTests {
     @Test func fieldsBecomeTwoOrThreeSentences() {
         let text = DescriptionText.render(subject: "A potted monstera", setting: "on a windowsill", visibleText: "", uncertainty: "none")
-        #expect(text == "A potted monstera. on a windowsill.")
+        #expect(text == "A potted monstera. On a windowsill.")
+        let road = DescriptionText.render(subject: "a red and a blue car on a road", meaning: "the two-second following distance between cars",
+                                          setting: "a road with grass on either side", visibleText: "2 seconds", uncertainty: "")
+        #expect(road == "A red and a blue car on a road. The two-second following distance between cars. A road with grass on either side. Text: 2 seconds.")
         let withText = DescriptionText.render(subject: "A terminal window.", setting: "", visibleText: "error: not found", uncertainty: "I can't tell the shell")
         #expect(withText == "A terminal window. Text: error: not found. I can't tell the shell.")
     }

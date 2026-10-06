@@ -224,6 +224,10 @@ struct ActionRow: View {
                     QuietButton(title: action.title) { model.onAction(action) }
                 }
             }
+            if model.offersOllama {
+                QuietButton(title: "Ask Ollama") { model.askOllama() }
+                    .accessibilityHint("The same question through the local vision model; slower, more detail")
+            }
             Spacer(minLength: 0)
             Menu {
                 if model.offersNewWindow {

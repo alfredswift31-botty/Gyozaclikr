@@ -47,6 +47,11 @@ final class BoxModel {
     /// ↑ recalls this.
     var lastRequest: String = ""
     var isEditableSource = false
+    /// Ollama answers image questions too: offered under an Apple image answer.
+    var ollamaAvailable = false
+    /// The deeper read: the same question through `/local`.
+    var offersOllama: Bool { state == .done && answerKind == .description && engine == .apple && ollamaAvailable }
+    func askOllama() { onSubmit("/local " + lastRequest) }
     /// Seconds since the request started, shown in mono on the Ollama path.
     var elapsed: TimeInterval = 0
 

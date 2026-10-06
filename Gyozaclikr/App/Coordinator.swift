@@ -395,6 +395,7 @@ final class Coordinator {
         diagnostics = await EngineProbe.measure(force: force)
         // The Apple engine's image capability is a fact measured at launch.
         apple = AppleEngine(imageSupport: diagnostics.imageInput)
+        if case .ready = diagnostics.ollama { model.ollamaAvailable = true } else { model.ollamaAvailable = false }
         settingsModel.diagnostics = diagnostics
         refreshMenu()
     }
