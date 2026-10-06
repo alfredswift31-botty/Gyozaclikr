@@ -166,6 +166,13 @@ struct EngineLinesTests {
     @Test func shortcutText() {
         #expect(HotKeyText.describe(keyCode: HotKeyText.defaultKeyCode, carbonModifiers: HotKeyText.defaultModifiers) == "⌃Space")
         #expect(HotKeyText.describe(keyCode: 0, carbonModifiers: HotKeyText.carbonModifiers(from: [.command, .shift])) == "⇧⌘A")
+        #expect(HotKeyText.describe(keyCode: UInt32(kVK_ISO_Section), carbonModifiers: 0) == "§")
+        #expect(HotKeyText.describe(keyCode: UInt32(kVK_F13), carbonModifiers: 0) == "F13")
+        #expect(HotKeyText.allowedBare(UInt32(kVK_ISO_Section)))
+        #expect(HotKeyText.allowedBare(UInt32(kVK_F19)))
+        #expect(!HotKeyText.allowedBare(UInt32(kVK_ANSI_A)), "a bare letter would steal typing")
+        #expect(!HotKeyText.allowedBare(UInt32(kVK_Space)))
+        #expect(!HotKeyText.allowedBare(UInt32(kVK_ANSI_Grave)), "backtick is typed in code")
     }
 }
 

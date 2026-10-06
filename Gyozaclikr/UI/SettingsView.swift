@@ -126,10 +126,10 @@ private struct GeneralPane: View {
             Toggle("Show a pill after a drag selection", isOn: $pillEnabled)
                 .disabled(true)
         } header: {
-            Text("Summon").labelStyle()
+            Text("Shortcut").labelStyle()
         } footer: {
             Text(model.hotKeyRegistered
-                 ? "Tap the shortcut for the current selection; hold it for a screen region. The pill arrives in 1.1."
+                 ? "Click the field and press the keys. Tap the shortcut for the current selection; hold it for a screen region. A key with modifiers, or § or a function key on its own; a bare letter is refused."
                  : "macOS holds this combination (⌃Space switches keyboard languages when more than one is on). Record another one.")
                 .font(Theme.Typeface.meta)
                 .foregroundStyle(model.hotKeyRegistered ? Theme.inkSecondary : Theme.live)
@@ -210,9 +210,8 @@ struct ShortcutRecorder: NSViewRepresentable {
                 return
             }
             let modifiers = HotKeyText.carbonModifiers(from: event.modifierFlags.intersection(.deviceIndependentFlagsMask))
-            // A bare letter would steal typing everywhere; function keys and modified keys are fine.
-            let isFunctionKey = (Int(event.keyCode) >= kVK_F1 && Int(event.keyCode) <= kVK_F12) || event.keyCode == UInt16(kVK_F13)
-            guard modifiers != 0 || isFunctionKey else { NSSound.beep(); return }
+            // A bare letter would steal typing everywhere; §, the function keys and modified keys are fine.
+            guard modifiers != 0 || HotKeyText.allowedBare(UInt32(event.keyCode)) else { NSSound.beep(); return }
             isRecording = false
             onRecord(UInt32(event.keyCode), modifiers)
             window?.makeFirstResponder(nil)

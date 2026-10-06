@@ -16,6 +16,21 @@ nonisolated enum HotKeyText {
         return result
     }
 
+    /// Keys that may be a shortcut on their own: § (the key above Tab on
+    /// ISO keyboards, typed by nobody mid-sentence) and the function keys.
+    /// A bare letter, digit or Space would steal typing everywhere.
+    static func allowedBare(_ keyCode: UInt32) -> Bool {
+        let code = Int(keyCode)
+        if code == kVK_ISO_Section { return true }
+        return functionKeys[code] != nil
+    }
+
+    private static let functionKeys: [Int: String] = [
+        kVK_F1: "F1", kVK_F2: "F2", kVK_F3: "F3", kVK_F4: "F4", kVK_F5: "F5", kVK_F6: "F6", kVK_F7: "F7",
+        kVK_F8: "F8", kVK_F9: "F9", kVK_F10: "F10", kVK_F11: "F11", kVK_F12: "F12", kVK_F13: "F13", kVK_F14: "F14",
+        kVK_F15: "F15", kVK_F16: "F16", kVK_F17: "F17", kVK_F18: "F18", kVK_F19: "F19", kVK_F20: "F20",
+    ]
+
     /// "⌃⌥Space": modifiers in the system's order, then the key.
     static func describe(keyCode: UInt32, carbonModifiers: UInt32) -> String {
         var text = ""
@@ -44,20 +59,10 @@ nonisolated enum HotKeyText {
         case kVK_End: return "End"
         case kVK_PageUp: return "Page Up"
         case kVK_PageDown: return "Page Down"
-        case kVK_F1: return "F1"
-        case kVK_F2: return "F2"
-        case kVK_F3: return "F3"
-        case kVK_F4: return "F4"
-        case kVK_F5: return "F5"
-        case kVK_F6: return "F6"
-        case kVK_F7: return "F7"
-        case kVK_F8: return "F8"
-        case kVK_F9: return "F9"
-        case kVK_F10: return "F10"
-        case kVK_F11: return "F11"
-        case kVK_F12: return "F12"
+        case kVK_ISO_Section: return "§"
         default: break
         }
+        if let function = functionKeys[Int(keyCode)] { return function }
         if let letter = letters[Int(keyCode)] { return letter }
         return "Key \(keyCode)"
     }
