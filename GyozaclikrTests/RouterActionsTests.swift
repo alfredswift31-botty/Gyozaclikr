@@ -114,7 +114,7 @@ nonisolated enum RouteCases {
         RouteCase("the box's engine is the request's", Fixed.text("x"), "make it rhyme", engine: .claude,
                   .transform(prompt: "make it rhyme", engine: .claude, status: "Working…")),
         RouteCase("/local wins over the box's engine", Fixed.text("x"), "/local make it rhyme", engine: .apple,
-                  .transform(prompt: "make it rhyme", engine: .apple, status: "Working…")),
+                  .transform(prompt: "make it rhyme", engine: .ollama, status: "Working…")),
         RouteCase("Ollama when Apple is absent", Fixed.text("x"), "make it rhyme", engines: Fixed.ollamaOnly,
                   .transform(prompt: "make it rhyme", engine: .ollama, status: "Working…")),
         RouteCase("no engine at all", Fixed.text("x"), "make it rhyme", engines: Fixed.none, .refuse(reason: Router.noEngine)),

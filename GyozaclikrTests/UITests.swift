@@ -181,7 +181,7 @@ struct StatusMenuTests {
         let permissions = items.first { $0.kind == .permissions }?.children ?? []
         #expect(permissions.map(\.dotted) == [true, false, true, false, false])
         #expect(permissions[1].title == "Screen Recording · Grant…")
-        #expect(UIFixtures.menuModel().engineLines == ["Apple Intelligence · ready", "Ollama · reachable · qwen3-vl:8b"])
+        #expect(UIFixtures.menuModel().engineLines == ["Apple Intelligence · ready", "Ollama · reachable · qwen3-vl:8b", "Claude · needs the claude CLI"])
     }
 }
 
