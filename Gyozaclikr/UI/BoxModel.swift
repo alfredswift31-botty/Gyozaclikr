@@ -65,6 +65,20 @@ final class BoxModel {
     var isEditableSource = false
     /// Ollama answers image questions too: offered under an Apple image answer.
     var ollamaAvailable = false
+    /// Every engine's state, for the picker: a disabled row says why.
+    var engineStatus: [EngineKind: EngineStatus] = [:]
+    func isAvailable(_ kind: EngineKind) -> Bool {
+        if case .ready = engineStatus[kind] { return true }
+        return false
+    }
+    /// The picker: the engine for the next request, and the default from then on.
+    var onChooseEngine: (EngineKind) -> Void = { _ in }
+    func choose(engine kind: EngineKind) {
+        engine = kind
+        engineModelName = nil
+        engineLeavesMac = kind.leavesMac
+        onChooseEngine(kind)
+    }
     /// The deeper read: the same question through `/local`.
     var offersOllama: Bool { state == .done && answerKind == .description && engine == .apple && ollamaAvailable }
     func askOllama() { onSubmit("/local " + lastRequest) }
@@ -145,6 +159,9 @@ final class BoxModel {
         var label = engine.label
         if engine == .ollama, let engineModelName {
             label = "Ollama · \(engineModelName) · on this Mac"
+        }
+        if engine == .claude, let engineModelName {
+            label = "Claude · \(engineModelName)"
         }
         if engineLeavesMac { label += " · leaves this Mac" }
         return label

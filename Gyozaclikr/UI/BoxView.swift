@@ -37,15 +37,16 @@ struct BoxView: View {
             case .hidden, .empty, .typing:
                 input
                 chipRow
+                EnginePicker(model: model)
             case .streaming:
                 thread
-                EngineRow(label: model.engineLabel)
+                EnginePicker(model: model)
                 StatusLine(status: model.status, elapsed: model.engine == .ollama ? model.elapsed : nil,
                            full: !model.answer.isEmpty, reduceMotion: animates.map { !$0 } ?? reduceMotion)
                 input
             case .done:
                 thread
-                EngineRow(label: model.engineLabel)
+                EnginePicker(model: model)
                 extractionNote
                 ActionRow(model: model)
                 if let outcome = model.outcome { OutcomeLine(outcome: outcome) }
@@ -68,7 +69,7 @@ struct BoxView: View {
         .frame(width: model.userSize?.width ?? model.width, height: model.userSize?.height, alignment: .topLeading)
         .background(chrome)
         .overlay(alignment: .top) {
-            if model.engine == .ollama, model.state.isWide {
+            if model.engine != .apple, model.state.isWide {
                 Theme.engineGradient.frame(height: 2).accessibilityHidden(true)
             }
         }
@@ -264,6 +265,54 @@ struct EngineRow: View {
             .font(BoxFont.small)
             .foregroundStyle(BoxColor.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// The engine row as a menu: the current engine's label with a chevron;
+/// the menu lists all three, a tick on the current one, the unavailable
+/// ones disabled with their reason. A choice applies to the next request
+/// and becomes the default (Settings › Engines shows the same choice).
+struct EnginePicker: View {
+    let model: BoxModel
+
+    var body: some View {
+        HStack {
+            Menu {
+                ForEach(EngineKind.allCases, id: \.self) { kind in
+                    let available = model.isAvailable(kind)
+                    Button {
+                        model.choose(engine: kind)
+                    } label: {
+                        if kind == model.engine {
+                            Label(kind.title, systemImage: "checkmark")
+                        } else {
+                            Text(available ? kind.title : "\(kind.title) · \(reason(for: kind))")
+                        }
+                    }
+                    .disabled(!available)
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Text(model.engineLabel)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 7, weight: .semibold))
+                }
+                .font(BoxFont.small)
+                .foregroundStyle(BoxColor.secondary)
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel("Engine: \(model.engineLabel)")
+            .accessibilityHint("Choose the engine for the next request")
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func reason(for kind: EngineKind) -> String {
+        if case .unavailable(let why) = model.engineStatus[kind] { return why }
+        return "not checked yet"
     }
 }
 

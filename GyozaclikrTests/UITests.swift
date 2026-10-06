@@ -156,6 +156,11 @@ struct EngineLinesTests {
         #expect(EngineLines.apple(UIFixtures.diagnosticsOffline)[3] == "image input: not in this build")
         #expect(EngineLines.ollama(UIFixtures.diagnosticsOffline) == ["status: Ollama is not running."])
         #expect(EngineLines.ollama(UIFixtures.diagnostics) == ["status: reachable · 3 models · vision: qwen3-vl:8b"])
+        #expect(EngineLines.claude(UIFixtures.diagnosticsOffline) == ["status: Not checked yet."])
+        var installed = UIFixtures.diagnostics
+        installed.claude = .ready
+        installed.claudePath = "/opt/homebrew/bin/claude"
+        #expect(EngineLines.claude(installed) == ["status: claude CLI at /opt/homebrew/bin/claude"])
     }
 
     @Test func shortcutText() {

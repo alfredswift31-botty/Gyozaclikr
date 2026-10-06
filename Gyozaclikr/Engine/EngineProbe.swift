@@ -45,6 +45,15 @@ enum EngineProbe {
             diagnostics.ollama = .unavailable(OllamaEngine.notRunning(ollama.host))
         }
 
+        // The CLI's presence is a file check; whether it is signed in is a real
+        // call, which the Test button in Settings makes on request, not at launch.
+        if let path = ClaudeCLI.binary() {
+            diagnostics.claude = .ready
+            diagnostics.claudePath = path
+        } else {
+            diagnostics.claude = .unavailable(ClaudeCLI.needsCLI)
+        }
+
         diagnostics.measuredAt = Date()
         cached = diagnostics
         return diagnostics

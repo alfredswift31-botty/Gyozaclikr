@@ -15,7 +15,7 @@ A pointer-level assistant for the Mac. Select something, a picture or some words
 - **Read-write, with undo.** Local transforms replace or insert without confirmation and can be undone. Mail, reminders, events and shortcuts always confirm first.
 
 ## What it is not
-Not a chat window. Not a screen recorder with a timeline. Not a face identifier, a shopping finder or a fact checker. Not a cloud service.
+Not a chat window. Not a screen recorder with a timeline. Not a face identifier, a shopping finder or a fact checker. Not a cloud service by default: Claude is an opt-in third engine (1.1), through the owner's own signed-in Claude Code CLI, and every answer from it says "leaves this Mac".
 
 ## Why it fits the suite
 GyozaYap already runs the same model on this Mac; GyozaVitals shows what it costs. Gyozaclikr is the third use of the same on-device stack, built for the moment between selecting and acting.

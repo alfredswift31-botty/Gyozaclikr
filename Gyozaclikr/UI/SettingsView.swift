@@ -16,10 +16,14 @@ final class SettingsModel {
     var hotKeyRegistered = true
     /// What the box did on the last summon, measured 300 ms after it, for the Engines pane.
     var boxDiagnostics: String = "no summon yet"
+    /// The last Test of the Claude Code CLI: "ok · 3.1 s · …" or the failure.
+    var claudeTest = "not run"
     let defaults: UserDefaults
 
     var onRecordShortcut: (_ keyCode: UInt32, _ carbonModifiers: UInt32) -> Void = { _, _ in }
     var onMeasureAgain: () -> Void = {}
+    /// One real call to the Claude Code CLI; the result lands in `claudeTest`.
+    var onTestClaude: () -> Void = {}
     var onGrant: (Permission) -> Void = { _ in }
     var onClearHistory: () -> Void = {}
     /// Click on a history row: copies the answer by default.
@@ -230,20 +234,37 @@ private struct EnginesPane: View {
     let model: SettingsModel
     @AppStorage(SettingsKey.ollamaHost) private var ollamaHost = "http://localhost:11434"
     @AppStorage(SettingsKey.ollamaVisionModel) private var ollamaModel = "qwen3-vl:8b"
+    @AppStorage(SettingsKey.defaultEngine) private var defaultEngine = EngineKind.apple.rawValue
+    @AppStorage(SettingsKey.claudeModel) private var claudeModel = ""
 
     init(model: SettingsModel) {
         self.model = model
         _ollamaHost = AppStorage(wrappedValue: "http://localhost:11434", SettingsKey.ollamaHost, store: model.defaults)
         _ollamaModel = AppStorage(wrappedValue: "qwen3-vl:8b", SettingsKey.ollamaVisionModel, store: model.defaults)
+        _defaultEngine = AppStorage(wrappedValue: EngineKind.apple.rawValue, SettingsKey.defaultEngine, store: model.defaults)
+        _claudeModel = AppStorage(wrappedValue: "", SettingsKey.claudeModel, store: model.defaults)
     }
 
     var body: some View {
+        Section {
+            Picker("Default engine", selection: $defaultEngine) {
+                ForEach(EngineKind.allCases, id: \.rawValue) { kind in
+                    Text(kind.title).tag(kind.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+        } footer: {
+            Text("The engine the box opens with. The row under an answer is the same choice: pick another engine there for the next request. A typed /apple, /local or /claude forces one request.")
+                .font(Theme.Typeface.meta)
+                .foregroundStyle(Theme.inkSecondary)
+        }
+
         Section {
             ForEach(EngineLines.apple(model.diagnostics), id: \.self) { DiagnosticsLine(text: $0) }
         } header: {
             Text("Apple Intelligence").labelStyle()
         } footer: {
-            Text("The default engine. Text on macOS 26; text and images on macOS 27, where this Mac's tier allows it.")
+            Text("On-device. Text on macOS 26; text and images on macOS 27, where this Mac's tier allows it.")
                 .font(Theme.Typeface.meta)
                 .foregroundStyle(Theme.inkSecondary)
         }
@@ -258,6 +279,24 @@ private struct EnginesPane: View {
             Text("Ollama").labelStyle()
         } footer: {
             Text("The labelled second engine for image questions. A host that is not this Mac means the image leaves it; the box says so.")
+                .font(Theme.Typeface.meta)
+                .foregroundStyle(Theme.inkSecondary)
+        }
+
+        Section {
+            TextField("Model", text: $claudeModel, prompt: Text(ClaudeCLI.defaultModel))
+                .font(Theme.Typeface.mono)
+            ForEach(EngineLines.claude(model.diagnostics), id: \.self) { DiagnosticsLine(text: $0) }
+            HStack {
+                DiagnosticsLine(text: "test: \(model.claudeTest)")
+                Spacer()
+                Button("Test") { model.onTestClaude() }
+                    .disabled(model.claudeTest == "running…")
+            }
+        } header: {
+            Text("Claude").labelStyle()
+        } footer: {
+            Text("Runs the Claude Code CLI that is installed and signed in on this Mac, once per request; calls count against your Claude plan, and no API key is involved. With Claude chosen, the selection and the question go to Anthropic; the box says “leaves this Mac”. Test makes one real call.")
                 .font(Theme.Typeface.meta)
                 .foregroundStyle(Theme.inkSecondary)
         }
@@ -311,6 +350,15 @@ nonisolated enum EngineLines {
         case .ready:
             let models = d.ollamaModels.isEmpty ? "no models" : "\(d.ollamaModels.count) \(d.ollamaModels.count == 1 ? "model" : "models")"
             return ["status: reachable · \(models) · vision: \(d.ollamaVisionModel ?? dash)"]
+        case .unavailable(let why):
+            return ["status: \(why)"]
+        }
+    }
+
+    static func claude(_ d: EngineDiagnostics) -> [String] {
+        switch d.claude {
+        case .ready:
+            return ["status: claude CLI at \(d.claudePath ?? dash)"]
         case .unavailable(let why):
             return ["status: \(why)"]
         }

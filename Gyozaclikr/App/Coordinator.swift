@@ -18,6 +18,7 @@ final class Coordinator {
     // Engines
     private(set) var apple = AppleEngine()
     let ollama = OllamaEngine()
+    let claude = ClaudeEngine()
     // Router and actions
     let router = Router()
     let history = HistoryStore()
@@ -88,6 +89,7 @@ final class Coordinator {
         lastAnswer = nil
         model.present(selection, chips: Self.chips(for: selection), suggested: Self.suggestedChip(for: selection))
         model.engine = preferredEngine(for: selection)
+        Task { await label(engine: model.engine) }
         companion.boxShown()
         panel.show(anchoredTo: anchor)
         recordBoxDiagnostics(after: "summon")
@@ -179,12 +181,23 @@ final class Coordinator {
         return greeting || signoff ? .reply : .fix
     }
 
+    /// The engine the box opens with: the default the user chose (in the
+    /// box's picker or Settings) when it is ready and can take the selection,
+    /// else Apple, else whichever engine can see an image Apple cannot.
     private func preferredEngine(for selection: Selection) -> EngineKind {
-        if selection.kind == .image, !engineCapabilities[.apple, default: []].contains(.image),
-           engineCapabilities[.ollama] != nil {
-            return .ollama
+        let needsImage = selection.kind == .image
+        if let chosen = Self.defaultEngineSetting, let abilities = engineCapabilities[chosen],
+           !needsImage || abilities.contains(.image) {
+            return chosen
+        }
+        if needsImage, !engineCapabilities[.apple, default: []].contains(.image) {
+            for kind in [EngineKind.ollama, .claude] where engineCapabilities[kind]?.contains(.image) == true { return kind }
         }
         return .apple
+    }
+
+    static var defaultEngineSetting: EngineKind? {
+        UserDefaults.standard.string(forKey: SettingsKey.defaultEngine).flatMap(EngineKind.init(rawValue:))
     }
 
     /// What the router may route to. When nothing is ready, Apple's engine
@@ -193,11 +206,18 @@ final class Coordinator {
         var map: [EngineKind: Set<EngineCapability>] = [:]
         if case .ready = diagnostics.apple { map[.apple] = apple.capabilities }
         if case .ready = diagnostics.ollama { map[.ollama] = ollama.capabilities }
+        if case .ready = diagnostics.claude { map[.claude] = claude.capabilities }
         if map.isEmpty { map[.apple] = apple.capabilities }
         return map
     }
 
-    private func engine(_ kind: EngineKind) -> any LanguageEngine { kind == .apple ? apple : ollama }
+    private func engine(_ kind: EngineKind) -> any LanguageEngine {
+        switch kind {
+        case .apple: apple
+        case .ollama: ollama
+        case .claude: claude
+        }
+    }
 
     /// "change this", "make it formal", "summarise": a request about the
     /// selection rather than a standalone question.
@@ -212,11 +232,12 @@ final class Coordinator {
     func submit(text: String) {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.lowercased() == "/history" { openHistory(); return }
-        run(Request(selection: lastSelection, text: text))
+        // The box's engine (the picker's choice) is the request's; a typed /local, /claude or /apple wins for that request.
+        run(Request(selection: lastSelection, text: text, engine: model.engine))
     }
 
     func submit(chip: Chip) {
-        run(Request(selection: lastSelection, chip: chip))
+        run(Request(selection: lastSelection, chip: chip, engine: model.engine))
     }
 
     private func run(_ request: Request) {
@@ -305,6 +326,9 @@ final class Coordinator {
         case .ollama:
             model.engineLeavesMac = !OllamaRequest.isLocal(ollama.host)
             model.engineModelName = await ollama.model(vision: lastSelection.kind == .image)
+        case .claude:
+            model.engineLeavesMac = true
+            model.engineModelName = claude.model
         }
     }
 
@@ -386,6 +410,15 @@ final class Coordinator {
             refreshMenu()
         }
         settingsModel.onMeasureAgain = { [weak self] in Task { await self?.measureEngines(force: true) } }
+        settingsModel.onTestClaude = { [weak self] in
+            guard let self else { return }
+            settingsModel.claudeTest = "running…"
+            Task { self.settingsModel.claudeTest = await self.claude.selfTest() }
+        }
+        model.onChooseEngine = { [weak self] kind in
+            UserDefaults.standard.set(kind.rawValue, forKey: SettingsKey.defaultEngine)
+            Task { await self?.label(engine: kind) }
+        }
         settingsModel.onGrant = { [weak self] permission in Task { await self?.request(permission) } }
         settingsModel.onClearHistory = { [weak self] in
             self?.history.clear()
@@ -412,6 +445,7 @@ final class Coordinator {
         // The Apple engine's image capability is a fact measured at launch.
         apple = AppleEngine(imageSupport: diagnostics.imageInput)
         if case .ready = diagnostics.ollama { model.ollamaAvailable = true } else { model.ollamaAvailable = false }
+        model.engineStatus = [.apple: diagnostics.apple, .ollama: diagnostics.ollama, .claude: diagnostics.claude]
         settingsModel.diagnostics = diagnostics
         refreshMenu()
     }

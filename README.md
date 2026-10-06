@@ -1,6 +1,6 @@
 # Gyozaclikr
 
-A pointer-level assistant for the Mac. Select text in any app, or a region of the screen, press the shortcut, and a small box appears beside the selection. Ask for what you want: fix it, make it formal, summarise it, turn it into a list, remind me about it, send it as mail. Apple Intelligence's on-device model does the work; on macOS 27 it can see a selected picture too. Your local Ollama model is the labelled second engine for harder image questions. Nothing leaves the Mac unless you choose an engine that does, and the box says so.
+A pointer-level assistant for the Mac. Select text in any app, or a region of the screen, press the shortcut, and a small box appears beside the selection. Ask for what you want: fix it, make it formal, summarise it, turn it into a list, remind me about it, send it as mail. Apple Intelligence's on-device model does the work by default; on macOS 27 it can see a selected picture too. Your local Ollama model is the labelled second engine for harder image questions, and Claude, through the Claude Code CLI signed in on your Mac, is the third. You pick the engine in the box. Nothing leaves the Mac unless you choose an engine that does, and the box says so.
 
 Status: 1.0 built and released from CI; not yet verified on a Mac. See `docs/BRIEF.md` for the idea, `docs/PLAN.md` for the architecture and scope, `docs/DESIGN.md` for the box, and `docs/research/` for the three reports behind them.
 
@@ -16,10 +16,21 @@ Status: 1.0 built and released from CI; not yet verified on a Mac. See `docs/BRI
 3. Press ⌘1–⌘8 for a chip (Fix, Shorter, Formal, Casual, Summarise, List, Reply, Remind) or type what you want and press Enter.
 4. Replace puts the answer back where the text came from; Copy, Insert below and Send… are next to it. Drag the box anywhere by its background, resize it by the corner grip or an edge; the × or Esc closes it.
 5. Keep typing: each question and answer stacks in the box as a conversation, and a follow-up (“make it shorter”, “now in French”) knows what came before.
+6. The engine row (under the chips, or under an answer) is a menu: Apple Intelligence, Ollama or Claude. The choice applies to the next request and sticks; Settings › Engines has the same choice. Type `/apple`, `/local` or `/claude` first to force one request.
+
+### Claude
+Claude runs through the Claude Code CLI that is installed and signed in on your Mac, once per request, so calls count against your Claude plan; no API key. The app looks for `/opt/homebrew/bin/claude`, then `/usr/local/bin/claude`. To check it on your Mac: Settings › Engines › Claude › **Test** makes one real call and shows the result and the time, or run the same call by hand:
+
+```sh
+sh scripts/claude-cli-selftest.sh
+```
+
+If the result says it failed to authenticate, run `claude` in Terminal and use `/login`. The model is `claude-sonnet-5-5` unless you type another id in Settings.
 
 A small olive gyoza floats beside the pointer while the app is running, so you can see it is alive; it steps aside while the box is open. The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so; record any combination you like there.
 
 ## Versions
+- **1.1** (6 Oct 2026): Claude as the third engine, through the Claude Code CLI signed in on the Mac (no API key); the engine row is a picker, the choice sticks, and `/apple`, `/local`, `/claude` force one request.
 - **1.0.12** (6 Oct 2026): the box can be resized by its corner grip or any edge and keeps that size (⋯ › Automatic size undoes it); fence marks never leak into an answer; follow-ups are told not to repeat an earlier answer.
 - **1.0.11** (6 Oct 2026): questions the selection does not answer are answered from the model's general knowledge, prefixed “From general knowledge:”; rewrites still stay inside the selection.
 - **1.0.10** (6 Oct 2026): the box actually drags (1.0.9's drag never started through the SwiftUI host); Send… composes in whatever handles mailto:, Gmail in Chrome included, instead of only activating it. Both confirmed on the owner's Mac. If Send… opens Chrome without a compose window, allow Gmail as Chrome's mailto handler once (the diamond icon in Gmail's address bar).

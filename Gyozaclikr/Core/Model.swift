@@ -107,15 +107,28 @@ nonisolated enum Chip: String, CaseIterable, Hashable, Sendable {
 
 /// Which model answers. Apple is the default; Ollama is always labelled.
 nonisolated enum EngineKind: String, CaseIterable, Hashable, Sendable {
-    case apple, ollama
+    case apple, ollama, claude
 
     /// The label in the collapsed chip row and on the answer.
     var label: String {
         switch self {
         case .apple: "Apple Intelligence · on-device"
         case .ollama: "Ollama · on this Mac"
+        case .claude: "Claude · via Anthropic"
         }
     }
+
+    /// The short name in the engine picker and Settings.
+    var title: String {
+        switch self {
+        case .apple: "Apple Intelligence"
+        case .ollama: "Ollama"
+        case .claude: "Claude"
+        }
+    }
+
+    /// Whether the selection leaves this Mac by design (Ollama only when its host is remote).
+    var leavesMac: Bool { self == .claude }
 }
 
 /// One request from the box: a chip or free text, over a selection.
@@ -356,7 +369,18 @@ nonisolated struct EngineDiagnostics: Hashable, Sendable {
     var ollama: EngineStatus = .unavailable("Not checked yet.")
     var ollamaModels: [String] = []
     var ollamaVisionModel: String?
+    var claude: EngineStatus = .unavailable("Not checked yet.")
+    /// Where the Claude Code CLI was found, for Settings.
+    var claudePath: String?
     var measuredAt: Date?
+
+    func status(of kind: EngineKind) -> EngineStatus {
+        switch kind {
+        case .apple: apple
+        case .ollama: ollama
+        case .claude: claude
+        }
+    }
 }
 
 /// One past request, kept on this Mac only.
@@ -381,6 +405,10 @@ nonisolated enum SettingsKey {
     static let ollamaHost = "ollamaHost"
     static let ollamaVisionModel = "ollamaVisionModel"
     static let ollamaTextModel = "ollamaTextModel"
+    /// The model the Claude Code CLI is asked for; empty means `ClaudeCLI.defaultModel`.
+    static let claudeModel = "claudeModel"
+    /// The engine the box starts with (`EngineKind.rawValue`); the picker in the box writes it too.
+    static let defaultEngine = "defaultEngine"
     static let historyLimit = "historyLimit"
     /// The box size the user dragged to; 0 means automatic.
     static let boxWidth = "boxWidth"

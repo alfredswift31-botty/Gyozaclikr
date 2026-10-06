@@ -23,8 +23,9 @@ nonisolated struct Router: Routing {
     static let whichShortcut = "Which Shortcut? Say “run shortcut Name”."
 
     func route(_ request: Request, engines: [EngineKind: Set<EngineCapability>]) -> Route {
-        let (text, isLocal) = PreRouter.stripLocalPrefix(request.text)
-        let engine = request.engine ?? (isLocal ? .ollama : Self.defaultEngine(engines))
+        let (text, typed) = PreRouter.stripEnginePrefix(request.text)
+        let forced = typed ?? request.engine
+        let engine = forced ?? Self.defaultEngine(engines)
         let selection = request.selection
         let content = (selection.text ?? selection.word ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let dates = DateParsing(now: now(), calendar: calendar)
@@ -127,7 +128,7 @@ nonisolated struct Router: Routing {
                 return .transform(prompt: Self.ocrPrompt, engine: engine, status: "Reading…")
             }
             if text.isEmpty || content.isEmpty || PreRouter.isVisualQuestion(text) {
-                guard let seeing = Self.imageEngine(preferring: request.engine ?? (isLocal ? .ollama : nil), engines) else {
+                guard let seeing = Self.imageEngine(preferring: forced, engines) else {
                     return .refuse(reason: Self.noImageEngine)
                 }
                 return .describeImage(question: text, engine: seeing)
@@ -168,13 +169,14 @@ nonisolated struct Router: Routing {
     static func defaultEngine(_ engines: [EngineKind: Set<EngineCapability>]) -> EngineKind? {
         if engines[.apple] != nil { return .apple }
         if engines[.ollama] != nil { return .ollama }
+        if engines[.claude] != nil { return .claude }
         return nil
     }
 
     /// An engine that can see: the preferred one if it can, else Apple, else Ollama.
     static func imageEngine(preferring preferred: EngineKind?, _ engines: [EngineKind: Set<EngineCapability>]) -> EngineKind? {
         if let preferred, engines[preferred]?.contains(.image) == true { return preferred }
-        for kind in [EngineKind.apple, .ollama] where engines[kind]?.contains(.image) == true { return kind }
+        for kind in [EngineKind.apple, .ollama, .claude] where engines[kind]?.contains(.image) == true { return kind }
         return nil
     }
 

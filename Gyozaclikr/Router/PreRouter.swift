@@ -106,6 +106,8 @@ nonisolated enum PreRouter {
     static let selectionWords = Pattern(#"^\s*(this|it|that|the\s+selection|the\s+text|the\s+selected\s+text|these|those)\s*$"#)
 
     static let localPrefix = Pattern(#"^\s*/local\b\s*"#)
+    static let claudePrefix = Pattern(#"^\s*/claude\b\s*"#)
+    static let applePrefix = Pattern(#"^\s*/apple\b\s*"#)
 
     /// What NSDataDetector found in a piece of text.
     struct Detected: Hashable, Sendable {
@@ -214,11 +216,19 @@ nonisolated enum PreRouter {
 
     /// Strips a leading `/local`, which forces Ollama.
     static func stripLocalPrefix(_ text: String) -> (text: String, isLocal: Bool) {
-        guard let match = localPrefix.first(in: text), let range = Range(match.range, in: text) else {
-            return (text.trimmingCharacters(in: .whitespacesAndNewlines), false)
+        let (rest, engine) = stripEnginePrefix(text)
+        return (rest, engine == .ollama)
+    }
+
+    /// Strips a leading `/local` (Ollama), `/claude` or `/apple`: the typed way to pick an engine for one request.
+    static func stripEnginePrefix(_ text: String) -> (text: String, engine: EngineKind?) {
+        for (pattern, kind) in [(localPrefix, EngineKind.ollama), (claudePrefix, .claude), (applePrefix, .apple)] {
+            if let match = pattern.first(in: text), let range = Range(match.range, in: text) {
+                var rest = text
+                rest.removeSubrange(range)
+                return (rest.trimmingCharacters(in: .whitespacesAndNewlines), kind)
+            }
         }
-        var rest = text
-        rest.removeSubrange(range)
-        return (rest.trimmingCharacters(in: .whitespacesAndNewlines), true)
+        return (text.trimmingCharacters(in: .whitespacesAndNewlines), nil)
     }
 }

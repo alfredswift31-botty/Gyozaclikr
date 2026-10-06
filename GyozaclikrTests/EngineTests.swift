@@ -395,6 +395,52 @@ struct DescriptionTextTests {
     }
 }
 
+// MARK: - The Claude Code CLI, without the binary
+
+struct ClaudeCLITests {
+    @Test func binaryIsFoundByAbsolutePathInOrder() {
+        #expect(ClaudeCLI.binary(executable: { _ in false }) == nil)
+        #expect(ClaudeCLI.binary(executable: { $0 == "/usr/local/bin/claude" }) == "/usr/local/bin/claude")
+        #expect(ClaudeCLI.binary(executable: { _ in true }) == "/opt/homebrew/bin/claude", "Homebrew first")
+    }
+
+    @Test func argumentsFollowFlowsPattern() {
+        let args = ClaudeCLI.arguments(model: "claude-sonnet-5-5", prompt: "P")
+        #expect(args == ["--strict-mcp-config", "--disable-slash-commands", "--no-session-persistence", "--setting-sources", "",
+                         "--model", "claude-sonnet-5-5", "-p", "P", "--output-format", "json"])
+        #expect(ClaudeCLI.normalisedModel("  ") == "claude-sonnet-5-5")
+        #expect(ClaudeCLI.normalisedModel("claude-opus-5-5") == "claude-opus-5-5")
+        let prompt = ClaudeCLI.prompt(instructions: "Be brief.", user: "Hi")
+        #expect(prompt.hasPrefix("Be brief.\n\nOutput only the result"))
+        #expect(prompt.hasSuffix("\n\n---\n\nHi"))
+    }
+
+    @Test func outputIsParsedAndJudged() {
+        let ok = ClaudeCLI.parse(Data(#"{"type":"result","subtype":"success","is_error":false,"result":" Dear Dana, …  "}"#.utf8))
+        #expect(ok == ClaudeCLI.Output(result: " Dear Dana, …  ", isError: false, subtype: "success"))
+        #expect(ClaudeCLI.outcome(ok, exitStatus: 0, timedOut: false) == .success("Dear Dana, …"))
+
+        // The expired-login shape: is_error true under subtype "success"; never an answer.
+        let expired = ClaudeCLI.Output(result: "Failed to authenticate: OAuth session expired. Please run /login.", isError: true, subtype: "success")
+        #expect(ClaudeCLI.outcome(expired, exitStatus: 1, timedOut: false) == .failure(.unavailable(ClaudeCLI.signIn)))
+
+        let errored = ClaudeCLI.Output(result: "", isError: false, subtype: "error_max_turns")
+        #expect(ClaudeCLI.outcome(errored, exitStatus: 1, timedOut: false) == .failure(.offline("Claude Code: subtype error_max_turns, status 1")))
+        #expect(ClaudeCLI.outcome(nil, exitStatus: 2, timedOut: false) == .failure(.offline("Claude Code exited with status 2 and no JSON.")))
+        #expect(ClaudeCLI.outcome(ok, exitStatus: 0, timedOut: true) == .failure(.offline("Claude Code didn't answer within 60 s.")))
+        #expect(ClaudeCLI.parse(Data("not json".utf8)) == nil)
+    }
+
+    @Test func enginePrefixesPickAnEngineForOneRequest() {
+        #expect(PreRouter.stripEnginePrefix("/claude make it rhyme").text == "make it rhyme")
+        #expect(PreRouter.stripEnginePrefix("/claude make it rhyme").engine == .claude)
+        #expect(PreRouter.stripEnginePrefix("/local what is this").engine == .ollama)
+        #expect(PreRouter.stripEnginePrefix("/apple fix").engine == .apple)
+        #expect(PreRouter.stripEnginePrefix("/claudette").engine == nil)
+        #expect(PreRouter.stripEnginePrefix("  plain  ") == ("plain", nil))
+    }
+}
+
 // MARK: - Engine construction and status verbs
 
 struct EngineShapeTests {
@@ -415,6 +461,10 @@ struct EngineShapeTests {
         let ollama = OllamaEngine()
         #expect(ollama.kind == .ollama)
         #expect(ollama.capabilities == [.text, .image])
+        let claude = ClaudeEngine()
+        #expect(claude.kind == .claude)
+        #expect(claude.capabilities == [.text, .image])
+        #expect(EngineKind.allCases == [.apple, .ollama, .claude])
     }
 
     @Test func statusVerbsComeFromTheChips() {

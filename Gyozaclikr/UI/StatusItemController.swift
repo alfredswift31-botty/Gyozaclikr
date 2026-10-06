@@ -50,7 +50,7 @@ nonisolated struct StatusMenuModel: Hashable, Sendable {
         ]
     }
 
-    /// Two disabled lines: Apple Intelligence's state, Ollama reachable or off.
+    /// Three disabled lines: Apple Intelligence's state, Ollama reachable or off, Claude keyed or not.
     var engineLines: [String] {
         let apple: String = switch diagnostics.apple {
         case .ready: "Apple Intelligence · ready"
@@ -60,7 +60,11 @@ nonisolated struct StatusMenuModel: Hashable, Sendable {
         case .ready: "Ollama · reachable" + (diagnostics.ollamaVisionModel.map { " · \($0)" } ?? "")
         case .unavailable: "Ollama · off"
         }
-        return [apple, ollama]
+        let claude: String = switch diagnostics.claude {
+        case .ready: "Claude · CLI installed"
+        case .unavailable: "Claude · needs the claude CLI"
+        }
+        return [apple, ollama, claude]
     }
 }
 
