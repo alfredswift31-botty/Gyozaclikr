@@ -106,7 +106,7 @@ final class BoxModel {
 
     var placeholder: String {
         if !turns.isEmpty { return "Ask a follow-up…" }
-        switch selection.kind {
+        return switch selection.kind {
         case .image: "Ask about this image…"
         case .word: "Define \(selection.word ?? "this word")…"
         case .text, .none: "Ask about this selection…"
