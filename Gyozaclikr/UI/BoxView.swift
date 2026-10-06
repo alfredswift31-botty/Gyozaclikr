@@ -11,6 +11,15 @@ struct BoxView: View {
     var registerInput: ((InputField) -> Void)?
     /// Reports the card's rendered size, so the panel can follow it exactly.
     var onSize: ((CGSize) -> Void)?
+    /// A drag on the card's background: the pointer's displacement since it
+    /// began, in screen points, then `true` once when it ends. The panel
+    /// moves itself by it. A SwiftUI gesture, not AppKit's movable
+    /// background: that asks the view under the pointer whether a
+    /// mouse-down may move the window, and a hosting view says no, so the
+    /// 1.0.9 box never moved. Buttons, the field and text selection are
+    /// inner gestures and win over this one.
+    var onDrag: ((CGSize, Bool) -> Void)?
+    @State private var dragStart: CGPoint?
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
@@ -77,6 +86,19 @@ struct BoxView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(model.accessibilityTitle)
+        .gesture(DragGesture(minimumDistance: 3, coordinateSpace: .global)
+            .onChanged { _ in
+                // Screen coordinates, read fresh: the gesture's own translation
+                // is relative to the window, which is what is moving.
+                let pointer = NSEvent.mouseLocation
+                let start = dragStart ?? pointer
+                if dragStart == nil { dragStart = pointer }
+                onDrag?(CGSize(width: pointer.x - start.x, height: pointer.y - start.y), false)
+            }
+            .onEnded { _ in
+                dragStart = nil
+                onDrag?(.zero, true)
+            })
         .onGeometryChange(for: CGSize.self, of: { $0.size }) { size in onSize?(size) }
     }
 

@@ -37,8 +37,9 @@ final class BoxPanel: NSPanel {
         hidesOnDeactivate = false
         becomesKeyOnlyIfNeeded = false
         isReleasedWhenClosed = false
-        // Drag the card anywhere by its background; the box then stays where it was put.
-        isMovableByWindowBackground = true
+        // The card's own drag gesture moves the panel (`drag(by:ended:)`);
+        // AppKit's movable background never fired through the hosting view.
+        isMovableByWindowBackground = false
         animationBehavior = .none
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
@@ -47,7 +48,8 @@ final class BoxPanel: NSPanel {
         hasShadow = true
         host.rootView = AnyView(BoxView(model: model,
                                         registerInput: { [weak self] field in self?.inputField = field },
-                                        onSize: { [weak self] size in self?.cardDidLayout(size) }))
+                                        onSize: { [weak self] size in self?.cardDidLayout(size) },
+                                        onDrag: { [weak self] delta, ended in self?.drag(by: delta, ended: ended) }))
         // The panel sizes itself (refit): the hosting view's own sizing fought it.
         host.sizingOptions = []
         contentView = host
@@ -204,6 +206,20 @@ final class BoxPanel: NSPanel {
         placing = true
         setFrame(target, display: true)
         placing = false
+    }
+
+    // MARK: Dragging
+
+    /// The frame's origin when the current drag began.
+    private var dragOrigin: CGPoint?
+
+    /// Move by the pointer's displacement since the drag began. The move
+    /// posts `didMove`, which marks the box as the user's to keep in place.
+    func drag(by delta: CGSize, ended: Bool) {
+        if ended { dragOrigin = nil; return }
+        let origin = dragOrigin ?? frame.origin
+        dragOrigin = origin
+        setFrameOrigin(CGPoint(x: origin.x + delta.width, y: origin.y + delta.height))
     }
 
     // MARK: Keys the field does not see

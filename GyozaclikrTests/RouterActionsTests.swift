@@ -349,6 +349,13 @@ struct DateParsingTests {
 // MARK: - Actions
 
 struct ActionsPureTests {
+    @Test func mailtoCarriesRecipientsSubjectAndBody() {
+        let url = MailCompose.mailtoURL(to: ["dana@example.com", "lee@example.com"], subject: "Q4 & plans", body: "line one\nline two")
+        #expect(url?.absoluteString == "mailto:dana@example.com,lee@example.com?subject=Q4%20%26%20plans&body=line%20one%0D%0Aline%20two")
+        #expect(MailCompose.mailtoURL(to: [], subject: nil, body: "")?.absoluteString == "mailto:")
+        #expect(MailCompose.mailtoURL(to: [], subject: nil, body: "hi ?=+")?.absoluteString == "mailto:?body=hi%20%3F%3D%2B")
+    }
+
     @Test func appleScriptQuoting() {
         #expect(AppleScriptEscaping.quoted("a\"b\\c\nd") == "\"a\\\"b\\\\c\\nd\"")
         #expect(AppleScriptEscaping.quoted("tab\there\r\nnext") == "\"tab\\there\\nnext\"")
