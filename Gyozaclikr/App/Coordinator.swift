@@ -263,7 +263,7 @@ final class Coordinator {
         }
         return "Earlier in this conversation:\n" + lines.joined(separator: "\n")
             + "\n\nThe user now asks: " + prompt
-            + "\nAnswer this new question; do not repeat an earlier answer."
+            + "\nAnswer this new message; do not repeat an earlier answer. If it is thanks or a remark with nothing to answer, reply in a few words."
     }
 
     private func execute(_ route: Route, request: Request) async {

@@ -409,7 +409,7 @@ struct ThreadTests {
         var failed = Turn(request: "who is this", engine: .apple); failed.failure = "I don't identify people."
         let prompt = Coordinator.contextualise("is it overdue?", turns: [first, failed])
         #expect(prompt.hasPrefix("Earlier in this conversation:\nUser: what is this\nAssistant: An invoice for 1,284."))
-        #expect(prompt.contains("The user now asks: is it overdue?\nAnswer this new question; do not repeat an earlier answer."))
+        #expect(prompt.contains("The user now asks: is it overdue?\nAnswer this new message; do not repeat an earlier answer."))
         #expect(!prompt.contains("who is this"), "failed turns carry nothing")
         #expect(Coordinator.contextualise("summarise", turns: []) == "summarise")
     }

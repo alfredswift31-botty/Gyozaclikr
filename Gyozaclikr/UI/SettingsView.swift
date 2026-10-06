@@ -236,6 +236,7 @@ private struct EnginesPane: View {
     @AppStorage(SettingsKey.ollamaVisionModel) private var ollamaModel = "qwen3-vl:8b"
     @AppStorage(SettingsKey.defaultEngine) private var defaultEngine = EngineKind.apple.rawValue
     @AppStorage(SettingsKey.claudeModel) private var claudeModel = ""
+    @AppStorage(SettingsKey.claudeWebSearch) private var claudeWebSearch = false
 
     init(model: SettingsModel) {
         self.model = model
@@ -243,6 +244,7 @@ private struct EnginesPane: View {
         _ollamaModel = AppStorage(wrappedValue: "qwen3-vl:8b", SettingsKey.ollamaVisionModel, store: model.defaults)
         _defaultEngine = AppStorage(wrappedValue: EngineKind.apple.rawValue, SettingsKey.defaultEngine, store: model.defaults)
         _claudeModel = AppStorage(wrappedValue: "", SettingsKey.claudeModel, store: model.defaults)
+        _claudeWebSearch = AppStorage(wrappedValue: false, SettingsKey.claudeWebSearch, store: model.defaults)
     }
 
     var body: some View {
@@ -286,6 +288,7 @@ private struct EnginesPane: View {
         Section {
             TextField("Model", text: $claudeModel, prompt: Text(ClaudeCLI.defaultModel))
                 .font(Theme.Typeface.mono)
+            Toggle("Let Claude search the web", isOn: $claudeWebSearch)
             ForEach(EngineLines.claude(model.diagnostics), id: \.self) { DiagnosticsLine(text: $0) }
             HStack {
                 DiagnosticsLine(text: "test: \(model.claudeTest)")
@@ -296,7 +299,7 @@ private struct EnginesPane: View {
         } header: {
             Text("Claude").labelStyle()
         } footer: {
-            Text("Runs the Claude Code CLI that is installed and signed in on this Mac, once per request; calls count against your Claude plan, and no API key is involved. With Claude chosen, the selection and the question go to Anthropic; the box says “leaves this Mac”. Test makes one real call.")
+            Text("Runs the Claude Code CLI that is installed and signed in on this Mac, once per request; calls count against your Claude plan, and no API key is involved. With Claude chosen, the selection and the question go to Anthropic; the box says “leaves this Mac”. With web search on, Claude may look things up for current facts (a price, today's news), which adds ten to twenty seconds and costs more of your plan per answer; off, it answers from the text and what it knows. Test makes one real call.")
                 .font(Theme.Typeface.meta)
                 .foregroundStyle(Theme.inkSecondary)
         }

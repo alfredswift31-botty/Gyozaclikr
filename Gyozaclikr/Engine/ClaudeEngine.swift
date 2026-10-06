@@ -16,6 +16,10 @@ nonisolated enum ClaudeCLI {
     static let defaultModel = "claude-sonnet-5-5"
     /// A call takes 2.5–6 s; past this the process is terminated.
     static let timeout: TimeInterval = 60
+    /// A web search adds ten to twenty seconds per answer.
+    static let webSearchTimeout: TimeInterval = 120
+    /// The tools a web-enabled call may use without a permission prompt.
+    static let webTools = "WebSearch,WebFetch"
     static let needsCLI = "Needs the claude CLI: install Claude Code (it goes to /opt/homebrew/bin/claude) and sign in with `claude` then /login."
     static let signIn = "Claude Code isn't signed in. Run `claude` in Terminal and use /login."
 
@@ -30,15 +34,23 @@ nonisolated enum ClaudeCLI {
     }
 
     /// Flow's flags, in Flow's order: the first four skip what each call
-    /// doesn't need and would otherwise cost seconds.
-    static func arguments(model: String, prompt: String) -> [String] {
-        ["--strict-mcp-config", "--disable-slash-commands", "--no-session-persistence", "--setting-sources", "",
-         "--model", model, "-p", prompt, "--output-format", "json"]
+    /// doesn't need and would otherwise cost seconds. With `webSearch`, the
+    /// web tools are allowed (one-shot mode denies any tool that would
+    /// otherwise prompt, and the model then reports the denial as its answer).
+    static func arguments(model: String, prompt: String, webSearch: Bool = false) -> [String] {
+        var args = ["--strict-mcp-config", "--disable-slash-commands", "--no-session-persistence", "--setting-sources", ""]
+        if webSearch { args += ["--allowedTools", webTools] }
+        return args + ["--model", model, "-p", prompt, "--output-format", "json"]
     }
 
-    /// One prompt: the instructions, the output rule, a `---` line, the user's part.
-    static func prompt(instructions: String, user: String) -> String {
-        instructions + "\n\nOutput only the result, with no preamble and no closing remark.\n\n---\n\n" + user
+    /// One prompt: the instructions, what tools there are, the output rule,
+    /// a `---` line, the user's part. Without web search the model is told
+    /// it has no tools, so it never tries one and never mentions the refusal.
+    static func prompt(instructions: String, user: String, webSearch: Bool = false) -> String {
+        let tools = webSearch
+            ? "You may search the web and fetch pages for current facts (prices, news, dates, anything that changes); when you do, say in a few words what you checked."
+            : "You have no tools in this session: do not try to search or read anything, and do not mention tools. Answer from the text given and what you know, and say plainly when something cannot be known without looking it up."
+        return instructions + "\n\n" + tools + "\n\nOutput only the result, with no preamble and no closing remark.\n\n---\n\n" + user
     }
 
     /// What the CLI printed: `result`, `is_error`, `subtype`.
@@ -59,7 +71,7 @@ nonisolated enum ClaudeCLI {
     /// expired login comes back as `is_error: true, subtype: "success"` with
     /// the error text in `result`, which must never be shown as an answer.
     static func outcome(_ output: Output?, exitStatus: Int32, timedOut: Bool) -> Result<String, EngineFailure> {
-        if timedOut { return .failure(.offline("Claude Code didn't answer within \(Int(timeout)) s.")) }
+        if timedOut { return .failure(.offline("Claude Code didn't answer in time.")) }
         guard let output else {
             return .failure(.offline(exitStatus == 0 ? "Claude Code printed no JSON." : "Claude Code exited with status \(exitStatus) and no JSON."))
         }
@@ -150,6 +162,8 @@ nonisolated struct ClaudeEngine: LanguageEngine {
     }
 
     var model: String { ClaudeCLI.normalisedModel(defaults.string(forKey: SettingsKey.claudeModel)) }
+    /// Settings › Engines › Claude › "Let Claude search the web"; off by default.
+    var webSearch: Bool { defaults.bool(forKey: SettingsKey.claudeWebSearch) }
     var binary: String? { ClaudeCLI.binary() }
     var isInstalled: Bool { binary != nil }
 
@@ -190,9 +204,10 @@ nonisolated struct ClaudeEngine: LanguageEngine {
     func selfTest() async -> String {
         guard let binary else { return ClaudeCLI.needsCLI }
         let started = Date()
-        let prompt = ClaudeCLI.prompt(instructions: "You answer with one word.", user: "Reply with the single word OK.")
+        let prompt = ClaudeCLI.prompt(instructions: "You answer with one word.", user: "Reply with the single word OK.", webSearch: webSearch)
         do {
-            let run = try await ClaudeCLI.run(binary: binary, arguments: ClaudeCLI.arguments(model: model, prompt: prompt))
+            let run = try await ClaudeCLI.run(binary: binary, arguments: ClaudeCLI.arguments(model: model, prompt: prompt, webSearch: webSearch),
+                                              timeout: webSearch ? ClaudeCLI.webSearchTimeout : ClaudeCLI.timeout)
             let seconds = String(format: "%.1f", Date().timeIntervalSince(started))
             switch ClaudeCLI.outcome(ClaudeCLI.parse(run.stdout), exitStatus: run.exitStatus, timedOut: run.timedOut) {
             case .success(let text): return "ok · \(seconds) s · \(model) · said “\(text.prefix(40))”"
@@ -208,22 +223,23 @@ nonisolated struct ClaudeEngine: LanguageEngine {
     private func send(instructions: String, user: String, image: Data?, kind: Answer.Kind) -> AsyncStream<AnswerEvent> {
         let model = model
         let binary = binary
+        let webSearch = webSearch
         return AsyncStream { continuation in
             let task = Task {
-                await self.run(binary: binary, model: model, instructions: instructions, user: user, image: image, kind: kind, continuation: continuation)
+                await self.run(binary: binary, model: model, webSearch: webSearch, instructions: instructions, user: user, image: image, kind: kind, continuation: continuation)
                 continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }
         }
     }
 
-    private func run(binary: String?, model: String, instructions: String, user: String, image: Data?, kind: Answer.Kind,
+    private func run(binary: String?, model: String, webSearch: Bool, instructions: String, user: String, image: Data?, kind: Answer.Kind,
                      continuation: AsyncStream<AnswerEvent>.Continuation) async {
         guard let binary else {
             continuation.yield(.failed(.unavailable(ClaudeCLI.needsCLI)))
             return
         }
-        continuation.yield(.status("Asking Claude…"))
+        continuation.yield(.status(webSearch ? "Asking Claude, web allowed…" : "Asking Claude…"))
         var userPart = user
         var imageFile: URL?
         if let image {
@@ -238,9 +254,10 @@ nonisolated struct ClaudeEngine: LanguageEngine {
             }
         }
         defer { if let imageFile { try? FileManager.default.removeItem(at: imageFile) } }
-        let prompt = ClaudeCLI.prompt(instructions: instructions, user: userPart)
+        let prompt = ClaudeCLI.prompt(instructions: instructions, user: userPart, webSearch: webSearch)
         do {
-            let run = try await ClaudeCLI.run(binary: binary, arguments: ClaudeCLI.arguments(model: model, prompt: prompt))
+            let run = try await ClaudeCLI.run(binary: binary, arguments: ClaudeCLI.arguments(model: model, prompt: prompt, webSearch: webSearch),
+                                              timeout: webSearch ? ClaudeCLI.webSearchTimeout : ClaudeCLI.timeout)
             if Task.isCancelled { continuation.yield(.failed(.cancelled)); return }
             switch ClaudeCLI.outcome(ClaudeCLI.parse(run.stdout), exitStatus: run.exitStatus, timedOut: run.timedOut) {
             case .success(let text):

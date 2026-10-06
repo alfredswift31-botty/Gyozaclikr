@@ -411,8 +411,18 @@ struct ClaudeCLITests {
         #expect(ClaudeCLI.normalisedModel("  ") == "claude-sonnet-5-5")
         #expect(ClaudeCLI.normalisedModel("claude-opus-5-5") == "claude-opus-5-5")
         let prompt = ClaudeCLI.prompt(instructions: "Be brief.", user: "Hi")
-        #expect(prompt.hasPrefix("Be brief.\n\nOutput only the result"))
+        #expect(prompt.hasPrefix("Be brief.\n\nYou have no tools in this session"))
+        #expect(prompt.contains("Output only the result"))
         #expect(prompt.hasSuffix("\n\n---\n\nHi"))
+    }
+
+    @Test func webSearchAllowsTheWebToolsAndSaysSo() {
+        let args = ClaudeCLI.arguments(model: "m", prompt: "P", webSearch: true)
+        #expect(args.starts(with: ["--strict-mcp-config", "--disable-slash-commands", "--no-session-persistence", "--setting-sources", "", "--allowedTools", "WebSearch,WebFetch", "--model", "m"]))
+        #expect(!ClaudeCLI.arguments(model: "m", prompt: "P").contains("--allowedTools"))
+        let prompt = ClaudeCLI.prompt(instructions: "I.", user: "price?", webSearch: true)
+        #expect(prompt.contains("You may search the web"))
+        #expect(!prompt.contains("no tools"))
     }
 
     @Test func outputIsParsedAndJudged() {
@@ -427,7 +437,7 @@ struct ClaudeCLITests {
         let errored = ClaudeCLI.Output(result: "", isError: false, subtype: "error_max_turns")
         #expect(ClaudeCLI.outcome(errored, exitStatus: 1, timedOut: false) == .failure(.offline("Claude Code: subtype error_max_turns, status 1")))
         #expect(ClaudeCLI.outcome(nil, exitStatus: 2, timedOut: false) == .failure(.offline("Claude Code exited with status 2 and no JSON.")))
-        #expect(ClaudeCLI.outcome(ok, exitStatus: 0, timedOut: true) == .failure(.offline("Claude Code didn't answer within 60 s.")))
+        #expect(ClaudeCLI.outcome(ok, exitStatus: 0, timedOut: true) == .failure(.offline("Claude Code didn't answer in time.")))
         #expect(ClaudeCLI.parse(Data("not json".utf8)) == nil)
     }
 

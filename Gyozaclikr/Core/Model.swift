@@ -407,6 +407,8 @@ nonisolated enum SettingsKey {
     static let ollamaTextModel = "ollamaTextModel"
     /// The model the Claude Code CLI is asked for; empty means `ClaudeCLI.defaultModel`.
     static let claudeModel = "claudeModel"
+    /// Allow the Claude Code CLI its web search and fetch tools; off by default.
+    static let claudeWebSearch = "claudeWebSearch"
     /// The engine the box starts with (`EngineKind.rawValue`); the picker in the box writes it too.
     static let defaultEngine = "defaultEngine"
     static let historyLimit = "historyLimit"
