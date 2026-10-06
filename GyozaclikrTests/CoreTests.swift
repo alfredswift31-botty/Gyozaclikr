@@ -28,6 +28,13 @@ struct ContractTests {
 }
 
 struct PromptTests {
+    @Test func questionsMayLeaveTheSelection() {
+        // 1.0.11: the old "say so instead of guessing" rule gagged every follow-up question.
+        #expect(Prompts.instructions.contains("From general knowledge:"))
+        #expect(Prompts.instructions.contains("use only the selected text and add nothing"))
+        #expect(!Prompts.instructions.contains("instead of guessing"))
+    }
+
     @Test func anEmptySelectionIsNotFenced() {
         #expect(Prompts.userPrompt("Make this formal", selection: nil) == "Make this formal")
         #expect(Prompts.userPrompt("Make this formal", selection: "  \n") == "Make this formal")
