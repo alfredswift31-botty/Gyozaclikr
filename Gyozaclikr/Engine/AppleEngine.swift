@@ -290,7 +290,7 @@ nonisolated struct AppleEngine: LanguageEngine {
             continuation.yield(.status(statusVerb(for: prompt)))
         }
         do {
-            let answer = try await streamText(prompt + "\n\n" + Prompts.wrap(material), continuation: continuation)
+            let answer = try await streamText(Prompts.userPrompt(prompt, selection: material), continuation: continuation)
             continuation.yield(.done(Answer(text: answer, kind: .text, engine: .apple)))
         } catch {
             throw AppleErrors.failure(for: error, tokens: tokens, limit: limit)
@@ -310,7 +310,7 @@ nonisolated struct AppleEngine: LanguageEngine {
                 continuation.yield(.status("Reading part \(index + 1) of \(chunks.count)…"))
                 let session = LanguageModelSession(model: transformModel, instructions: Prompts.instructions)
                 do {
-                    let response = try await session.respond(to: prompt + "\n\n" + Prompts.wrap(chunk))
+                    let response = try await session.respond(to: Prompts.userPrompt(prompt, selection: chunk))
                     parts.append(response.content)
                 } catch {
                     throw AppleErrors.failure(for: error, tokens: await tokenCount(chunk), limit: limit)
@@ -344,7 +344,7 @@ nonisolated struct AppleEngine: LanguageEngine {
         let (tokens, limit) = await budget(prompt: prompt, text: text)
         guard tokens <= limit else { throw EngineFailure.tooLong(tokens: tokens, limit: limit) }
         let session = LanguageModelSession(instructions: Prompts.instructions)
-        let fullPrompt = prompt + "\n\n" + Prompts.wrap(text)
+        let fullPrompt = Prompts.userPrompt(prompt, selection: text)
         let options = GenerationOptions(sampling: .greedy)
         do {
             if asCSV {
@@ -407,7 +407,7 @@ nonisolated struct AppleEngine: LanguageEngine {
         let log = ProposalLog()
         let tools: [any Tool] = [SendMailTool(log: log), CreateReminderTool(log: log), CreateEventTool(log: log), SaveNoteTool(log: log)]
         let session = LanguageModelSession(tools: tools, instructions: Prompts.agentInstructions)
-        let prompt = text.isEmpty ? request : request + "\n\n" + Prompts.wrap(text)
+        let prompt = Prompts.userPrompt(request, selection: text)
         let answer: String
         do {
             answer = try await session.respond(to: prompt).content

@@ -184,7 +184,7 @@ nonisolated struct OllamaEngine: LanguageEngine {
     func prewarm() async {}
 
     func transform(prompt: String, selection: Selection) -> AsyncStream<AnswerEvent> {
-        let user = prompt + "\n\n" + Prompts.wrap(selection.text ?? "")
+        let user = Prompts.userPrompt(prompt, selection: selection.text)
         return chat(system: Prompts.instructions, user: user, image: nil, kind: .text, vision: false)
     }
 
@@ -194,7 +194,7 @@ nonisolated struct OllamaEngine: LanguageEngine {
         let format = asCSV
             ? "Answer with CSV lines only: one row per line, cells separated by commas, a header row first."
             : "Answer with a bulleted list only, one item per line, each item taken from the text."
-        let user = prompt + "\n" + format + "\n\n" + Prompts.wrap(selection.text ?? "")
+        let user = Prompts.userPrompt(prompt + "\n" + format, selection: selection.text)
         return chat(system: Prompts.instructions, user: user, image: nil, kind: asCSV ? .csv : .extraction, vision: false)
     }
 

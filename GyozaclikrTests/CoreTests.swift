@@ -26,3 +26,21 @@ struct ContractTests {
         #expect(Selection(kind: .text, text: "hello").hasContent)
     }
 }
+
+struct PromptTests {
+    @Test func anEmptySelectionIsNotFenced() {
+        #expect(Prompts.userPrompt("Make this formal", selection: nil) == "Make this formal")
+        #expect(Prompts.userPrompt("Make this formal", selection: "  \n") == "Make this formal")
+        let fenced = Prompts.userPrompt("Make this formal", selection: "hi there")
+        #expect(fenced.hasPrefix("Make this formal\n\n"))
+        #expect(fenced.hasSuffix("⟪hi there⟫"))
+    }
+
+    @MainActor
+    @Test func requestsAboutTheSelectionAreRecognised() {
+        #expect(Coordinator.refersToSelection("change this into formal writing"))
+        #expect(Coordinator.refersToSelection("Summarise"))
+        #expect(Coordinator.refersToSelection("make it shorter"))
+        #expect(!Coordinator.refersToSelection("what is the capital of France"))
+    }
+}

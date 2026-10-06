@@ -128,6 +128,12 @@ final class Coordinator {
             } else {
                 model.present(.none, chips: [], suggested: nil)
             }
+        case .failure(.accessibilityDenied):
+            // The system dialog once per launch; afterwards the Privacy pane.
+            let state = await request(.accessibility)
+            model.fail(.other(state == .granted
+                ? "Accessibility was just granted. Press the shortcut again."
+                : "Accessibility isn't granted, so the selection can't be read. Turn on Gyozaclikr in System Settings › Privacy & Security › Accessibility, then press the shortcut again."))
         case .failure(let failure):
             model.fail(Self.failure(for: failure))
         }
@@ -195,6 +201,14 @@ final class Coordinator {
 
     private func engine(_ kind: EngineKind) -> any LanguageEngine { kind == .apple ? apple : ollama }
 
+    /// "change this", "make it formal", "summarise": a request about the
+    /// selection rather than a standalone question.
+    static func refersToSelection(_ text: String) -> Bool {
+        let lower = " " + text.lowercased() + " "
+        return [" this ", " it ", " these ", " the selection ", " the text ", " above ", "summarise", "summarize", "rewrite", "fix ", "shorter", "formal", "casual", "translate"]
+            .contains { lower.contains($0) }
+    }
+
     // MARK: Requests
 
     func submit(text: String) {
@@ -210,6 +224,10 @@ final class Coordinator {
     private func run(_ request: Request) {
         current?.cancel()
         lastRequest = request
+        if !request.selection.hasContent, request.chip != nil || Self.refersToSelection(request.text) {
+            model.fail(.other("Nothing was read from the screen, so there is nothing to \(request.chip?.title.lowercased() ?? "change"). Select text first, or grant Accessibility in Settings › Permissions."))
+            return
+        }
         let route = router.route(request, engines: engineCapabilities)
         current = Task { await execute(route, request: request) }
     }
@@ -391,10 +409,13 @@ final class Coordinator {
         refreshMenu()
     }
 
-    func request(_ permission: Permission) async {
-        permissions[permission] = await reporter(for: permission).request(permission)
+    @discardableResult
+    func request(_ permission: Permission) async -> PermissionState {
+        let state = await reporter(for: permission).request(permission)
+        permissions[permission] = state
         settingsModel.permissions = permissions
         refreshMenu()
+        return state
     }
 
     private func reporter(for permission: Permission) -> any PermissionReporting {
