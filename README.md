@@ -30,7 +30,7 @@ If the result says it failed to authenticate, run `claude` in Terminal and use `
 A small olive gyoza floats beside the pointer while the app is running, so you can see it is alive; it steps aside while the box is open. The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so. Record any combination you like there under Shortcut: click the field and press the keys. § or a function key works on its own; a bare letter is refused, since it would steal typing everywhere.
 
 ## Versions
-- **1.1.4** (7 Oct 2026): the shortcut can be § (or a function key) on its own; the Settings section is headed Shortcut and says what it takes.
+- **1.1.4** (7 Oct 2026): the shortcut can be § (or a function key) on its own; the Settings section is headed Shortcut and says what it takes. Confirmed on the owner's Mac.
 - **1.1.3** (6 Oct 2026): a switch lets Claude search the web for current facts (confirmed on the owner's Mac); off, it is told it has no tools, so it never reports a denied search as its answer. A thanks in the thread gets a few words, not the last answer again.
 - **1.1.2** (6 Oct 2026): the ⌘V behind Replace is posted into the source app's process, not at the system level where the box itself held the keyboard. Replace and Insert below confirmed in an Electron app.
 - **1.1.1** (6 Oct 2026): Replace and Insert below are offered for any text read from an app, by ⌘V where Accessibility cannot write (Electron, web fields); the outcome line says which path ran.
