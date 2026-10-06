@@ -211,7 +211,12 @@ final class RegionOverlayWindow: NSWindow {
 
     init(screen: NSScreen) {
         overlayView = RegionOverlayView(frame: CGRect(origin: .zero, size: screen.frame.size))
-        super.init(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false, screen: screen)
+        // The four-argument designated initialiser. The `screen:` variant is
+        // AppKit's own convenience: it calls back into the subclass's
+        // four-argument initialiser, which Swift stubs with a trap when the
+        // subclass has not overridden it (this crashed 1.0 on the first hold).
+        // A content rect in global coordinates lands on that screen anyway.
+        super.init(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         level = .screenSaver
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         backgroundColor = .clear

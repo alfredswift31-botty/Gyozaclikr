@@ -9,8 +9,10 @@ import Carbon
 
 /// Press at t0, release at t1 or a timer at t0 + 300 ms: which gesture was it?
 nonisolated struct HotKeyGesture: Hashable, Sendable {
-    /// Held this long, the press becomes a hold.
-    static let holdThreshold: TimeInterval = 0.3
+    /// Held this long, the press becomes a hold. Half a second: a hand
+    /// that lingers on a shortcut for 300 ms is still tapping it (the first
+    /// real press reached region capture by accident).
+    static let holdThreshold: TimeInterval = 0.5
 
     enum Event: Hashable, Sendable {
         case pressed(at: TimeInterval)

@@ -19,6 +19,7 @@ Status: 1.0 built and released from CI; not yet verified on a Mac. See `docs/BRI
 The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so; record any combination you like there.
 
 ## Versions
+- **1.0.2** (6 Oct 2026): the first hold of the shortcut crashed the app in the region overlay (an AppKit initialiser calling back into an unimplemented one); fixed. A press now counts as a hold after half a second, not 300 ms.
 - **1.0.1** (6 Oct 2026): Settings opens (it did not from a menu-bar agent); the shortcut falls back when macOS holds ⌃Space, and Settings says so.
 - **1.0** (6 Oct 2026): first release. Hot key and Services entry, selection reading with a ⌘C fallback, region capture with Live Text, the box with eight chips and free text, Apple's on-device model (text; images on macOS 27), Ollama as the labelled second engine, reminders, events, notes, mail compose, search, Shortcuts, dictionary, history, Engines and Permissions panes.
 

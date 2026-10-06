@@ -76,6 +76,8 @@ private func privatePasteboard() -> NSPasteboard {
 // MARK: - Hot key
 
 struct HotKeyGestureTests {
+    private let hold = HotKeyGesture.holdThreshold
+
     @Test func aQuickPressIsATap() {
         var gesture = HotKeyGesture()
         #expect(gesture.handle(.pressed(at: 0)) == .startHoldTimer)
@@ -83,12 +85,19 @@ struct HotKeyGestureTests {
         #expect(!gesture.isPressed)
     }
 
+    @Test func aLingeringTapIsStillATap() {
+        // 300 ms on the keys is a tap, not a region capture.
+        var gesture = HotKeyGesture()
+        #expect(gesture.handle(.pressed(at: 0)) == .startHoldTimer)
+        #expect(gesture.handle(.released(at: 0.3)) == .tap)
+    }
+
     @Test func aPressStillDownAtTheThresholdIsAHoldOnce() {
         var gesture = HotKeyGesture()
         #expect(gesture.handle(.pressed(at: 0)) == .startHoldTimer)
-        #expect(gesture.handle(.timerFired(at: 0.3)) == .hold)
-        #expect(gesture.handle(.timerFired(at: 0.35)) == .none)
-        #expect(gesture.handle(.released(at: 0.9)) == .none)
+        #expect(gesture.handle(.timerFired(at: hold)) == .hold)
+        #expect(gesture.handle(.timerFired(at: hold + 0.05)) == .none)
+        #expect(gesture.handle(.released(at: hold + 0.6)) == .none)
     }
 
     @Test func keyRepeatDoesNotRestartThePress() {
@@ -96,24 +105,24 @@ struct HotKeyGestureTests {
         #expect(gesture.handle(.pressed(at: 0)) == .startHoldTimer)
         #expect(gesture.handle(.pressed(at: 0.05)) == .none)
         #expect(gesture.handle(.pressed(at: 0.2)) == .none)
-        #expect(gesture.handle(.timerFired(at: 0.3)) == .hold)
+        #expect(gesture.handle(.timerFired(at: hold)) == .hold)
     }
 
     @Test func aLateTimerCannotTurnALongPressIntoATap() {
         var gesture = HotKeyGesture()
         _ = gesture.handle(.pressed(at: 0))
-        #expect(gesture.handle(.released(at: 0.5)) == .hold)
+        #expect(gesture.handle(.released(at: hold + 0.2)) == .hold)
     }
 
     @Test func aStaleTimerFromAnEarlierTapIsIgnored() {
         var gesture = HotKeyGesture()
         _ = gesture.handle(.pressed(at: 0))
         #expect(gesture.handle(.released(at: 0.1)) == .tap)
-        #expect(gesture.handle(.timerFired(at: 0.3)) == .none)
+        #expect(gesture.handle(.timerFired(at: hold)) == .none)
         #expect(gesture.handle(.pressed(at: 0.2)) == .startHoldTimer)
         // The first press's timer: too early for the second press.
-        #expect(gesture.handle(.timerFired(at: 0.3)) == .none)
-        #expect(gesture.handle(.timerFired(at: 0.5)) == .hold)
+        #expect(gesture.handle(.timerFired(at: hold)) == .none)
+        #expect(gesture.handle(.timerFired(at: 0.2 + hold)) == .hold)
     }
 
     @Test func releaseWithoutAPressDoesNothing() {
