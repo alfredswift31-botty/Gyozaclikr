@@ -40,7 +40,9 @@ final class BoxPanel: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true
-        host.rootView = AnyView(BoxView(model: model, registerInput: { [weak self] field in self?.inputField = field }))
+        host.rootView = AnyView(BoxView(model: model,
+                                        registerInput: { [weak self] field in self?.inputField = field },
+                                        onSize: { [weak self] size in self?.cardDidLayout(size) }))
         // The panel sizes itself (refit): the hosting view's own sizing fought it.
         host.sizingOptions = []
         contentView = host
@@ -151,6 +153,16 @@ final class BoxPanel: NSPanel {
             place(size: size)
         }
         remeasureSoon()
+    }
+
+    /// SwiftUI's own word on the card's size, after layout: the only
+    /// measurement that was right on the owner's Mac (fittingSize lagged
+    /// and clipped the action row).
+    private func cardDidLayout(_ size: CGSize) {
+        guard isVisible, size.width >= 100, size.height >= 40 else { return }
+        if abs(size.width - frame.width) > 0.5 || abs(size.height - frame.height) > 0.5 {
+            place(size: size)
+        }
     }
 
     private var remeasure: DispatchWorkItem?

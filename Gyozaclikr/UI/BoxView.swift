@@ -9,6 +9,8 @@ struct BoxView: View {
     let model: BoxModel
     /// Hands the input field to the panel for first responder.
     var registerInput: ((InputField) -> Void)?
+    /// Reports the card's rendered size, so the panel can follow it exactly.
+    var onSize: ((CGSize) -> Void)?
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
@@ -59,6 +61,7 @@ struct BoxView: View {
         .overlay(RoundedRectangle(cornerRadius: Theme.Box.radius).strokeBorder(BoxColor.hairline, lineWidth: hairline))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(model.accessibilityTitle)
+        .onGeometryChange(for: CGSize.self, of: { $0.size }) { size in onSize?(size) }
     }
 
     @ViewBuilder

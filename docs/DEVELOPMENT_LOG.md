@@ -14,6 +14,7 @@ A pointer-level assistant for the Mac: select, summon, ask, act. On-device.
 | 1.0.5 | 2026-10-06 | [v1.0.5](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.5) |
 | 1.0.6 | 2026-10-06 | [v1.0.6](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.6) |
 | 1.0.7 | 2026-10-06 | [v1.0.7](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.7) |
+| 1.0.8 | 2026-10-06 | [v1.0.8](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.8) |
 
 ## Research and design (5 Oct 2026)
 Three agents researched in parallel: Apple's APIs, the system-integration layer, and the product and the box. Reports in `docs/research/`. The decisive finding: Apple's on-device Foundation Model takes images on macOS 27 (`Attachment`), verified against Apple's documentation data, so the app leads with Apple Intelligence for pictures and keeps the owner's Qwen3-VL via Ollama as the labelled second engine. Decisions: a deterministic chip row plus a pre-router before any free-text goes to the model; quote verification on every extraction (GyozaYap measured the model inventing items); confirmation cards for anything outward; a self-signed certificate rather than ad-hoc signing, because macOS ties Accessibility and Screen Recording grants to the designated requirement. "Who is this person" and "where can I buy it" are refused by design.
@@ -53,6 +54,9 @@ Accessibility granted, text selected in TextEdit, and 1.0.5 still read nothing. 
 
 ## 1.0.7: the clipped answer, second attempt (6 Oct 2026)
 1.0.6 read the selection (the quote appeared, the model made it formal) and the answer was still clipped on both sides. 1.0.5's refit measured the hosting view's fitting size when the observation fired, which is before SwiftUI renders the change, so it measured the old 360-pt layout and kept the old width. The panel now takes its width from the state alone (360, or 480 with an answer), applies it at once, measures the height now and again 60 ms later, and no longer lets the hosting view size the window (its own sizing fought the panel's).
+
+## 1.0.8: the card reports its size (6 Oct 2026)
+1.0.7's width was right and the action row was cut off below: the hosting view's fitting height lagged the real layout even 60 ms later. The card now reports its rendered size itself (`onGeometryChange` on the card's root), and the panel follows that: SwiftUI's own measurement after layout, not AppKit's estimate before it. Three releases on one window's size is the cost of sizing a SwiftUI card from AppKit by inference; the reporter should have been the first design.
 
 ## Where things stand (6 Oct 2026)
 Built in one night from the research: a scaffold, four module agents on their own branches, a coordinator. Nothing has run on a Mac yet. The order of verification: the Engines pane (does Apple's model take an image on this M4?), the box on a text selection in TextEdit (Replace), the same in Safari and a Chromium app, a region capture (the Screen Recording prompt), one chip, one free-text rewrite, one reminder with a date (the confirmation card and the EventKit prompt), one `/local` image question against Ollama.
