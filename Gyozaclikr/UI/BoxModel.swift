@@ -62,7 +62,11 @@ final class BoxModel {
     private(set) var outcome: ActionOutcome?
     /// ↑ recalls this.
     var lastRequest: String = ""
+    /// Accessibility vouched for the field (a native text field or area whose selection is settable): Replace leads.
     var isEditableSource = false
+    /// Text read from an app at all (not a region capture, not a word under the pointer): Replace is offered,
+    /// by ⌘V when Accessibility cannot write, since the field keeps its focus and its selection under the box.
+    var canWriteBack = false
     /// Ollama answers image questions too: offered under an Apple image answer.
     var ollamaAvailable = false
     /// Every engine's state, for the picker: a disabled row says why.
@@ -170,9 +174,13 @@ final class BoxModel {
     /// Replace when the source can take it, Copy otherwise.
     var primaryAction: ResultAction { isEditableSource ? .replace : .copy }
 
-    /// The row's buttons in order; Replace and Insert below only where they can work.
+    /// The row's buttons in order: Replace leads where Accessibility vouched
+    /// for the field, follows Copy where only ⌘V can try, and is absent for
+    /// a region capture or a word under the pointer.
     var actions: [ResultAction] {
-        isEditableSource ? [.replace, .copy, .insertBelow, .send] : [.copy, .send]
+        if isEditableSource { return [.replace, .copy, .insertBelow, .send] }
+        if canWriteBack { return [.copy, .replace, .insertBelow, .send] }
+        return [.copy, .send]
     }
 
     var answerLineCount: Int { MarkdownLite.lineCount(answer) }
@@ -216,6 +224,7 @@ final class BoxModel {
         self.chips = chips
         self.suggestedChip = suggested
         isEditableSource = selection.isEditable
+        canWriteBack = selection.kind == .text && selection.sourceApp != nil
         turns = []
         input = ""
         answer = ""

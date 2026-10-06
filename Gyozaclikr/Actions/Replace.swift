@@ -6,13 +6,18 @@ import ApplicationServices
 /// pasteboard (docs/research/system-integration.md §5). Needs the
 /// Accessibility grant, which Capture owns.
 enum Replace {
+    /// Accessibility first where it vouched for the field (the write is
+    /// verified by reading back), ⌘V for any text read from an app (Electron
+    /// and web fields take it, since they keep focus and selection under the
+    /// non-activating box; a read-only view ignores it), the clipboard last.
+    /// The outcome says which path ran: a paste cannot be verified.
     static func perform(_ text: String, insertBelow: Bool, selection: Selection) async -> ActionOutcome {
         let app = selection.sourceApp?.name ?? "the app"
         let verb = insertBelow ? "Inserted" : "Replaced"
         let payload = insertBelow ? "\n" + text : text
-        guard selection.isEditable else { return copyInstead(text, app: app) }
-        if AXWriter.write(payload, insertBelow: insertBelow) { return .done(verb) }
-        if await PasteWriter.paste(payload) { return .done(verb) }
+        guard selection.kind == .text, selection.sourceApp != nil else { return copyInstead(text, app: app) }
+        if selection.isEditable, AXWriter.write(payload, insertBelow: insertBelow) { return .done(verb) }
+        if await PasteWriter.paste(payload) { return .done("\(insertBelow ? "Inserted" : "Pasted over the selection") with ⌘V in \(app)") }
         return copyInstead(text, app: app)
     }
 

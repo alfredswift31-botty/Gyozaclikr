@@ -14,7 +14,7 @@ Status: 1.0 built and released from CI; not yet verified on a Mac. See `docs/BRI
 1. Select text in any app (or nothing, to define the word under the pointer).
 2. Press **⌃Space**. The box appears under the selection. Hold ⌃Space instead to draw a region of the screen.
 3. Press ⌘1–⌘8 for a chip (Fix, Shorter, Formal, Casual, Summarise, List, Reply, Remind) or type what you want and press Enter.
-4. Replace puts the answer back where the text came from; Copy, Insert below and Send… are next to it. Drag the box anywhere by its background, resize it by the corner grip or an edge; the × or Esc closes it.
+4. Replace puts the answer back where the text came from; Copy, Insert below and Send… are next to it. Replace leads when the app's text field is one macOS can write into directly; in other apps (Electron, web fields) it comes after Copy and pastes with ⌘V, and the line under the buttons says which happened. Drag the box anywhere by its background, resize it by the corner grip or an edge; the × or Esc closes it.
 5. Keep typing: each question and answer stacks in the box as a conversation, and a follow-up (“make it shorter”, “now in French”) knows what came before.
 6. The engine row (under the chips, or under an answer) is a menu: Apple Intelligence, Ollama or Claude. The choice applies to the next request and sticks; Settings › Engines has the same choice. Type `/apple`, `/local` or `/claude` first to force one request.
 
@@ -30,6 +30,7 @@ If the result says it failed to authenticate, run `claude` in Terminal and use `
 A small olive gyoza floats beside the pointer while the app is running, so you can see it is alive; it steps aside while the box is open. The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so; record any combination you like there.
 
 ## Versions
+- **1.1.1** (6 Oct 2026): Replace and Insert below are offered for any text read from an app, by ⌘V where Accessibility cannot write (Electron, web fields); the outcome line says which path ran.
 - **1.1** (6 Oct 2026): Claude as the third engine, through the Claude Code CLI signed in on the Mac (no API key); the engine row is a picker, the choice sticks, and `/apple`, `/local`, `/claude` force one request. Confirmed on the owner's Mac.
 - **1.0.12** (6 Oct 2026): the box can be resized by its corner grip or any edge and keeps that size (⋯ › Automatic size undoes it); fence marks never leak into an answer; follow-ups are told not to repeat an earlier answer.
 - **1.0.11** (6 Oct 2026): questions the selection does not answer are answered from the model's general knowledge, prefixed “From general knowledge:”; rewrites still stay inside the selection.
