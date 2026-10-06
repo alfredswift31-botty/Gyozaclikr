@@ -46,6 +46,7 @@ final class BoxPanel: NSPanel {
         observers.append(NotificationCenter.default.addObserver(forName: NSWindow.didResizeNotification, object: self, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.follow() }
         })
+        observeModel()
         // Switching apps or clicking elsewhere closes the box; observed once, acted on only while visible.
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] note in
             MainActor.assumeIsolated {
@@ -109,6 +110,39 @@ final class BoxPanel: NSPanel {
             return
         }
         orderOut(nil)
+    }
+
+    /// The card changes width (360 → 480 when an answer arrives) and height
+    /// as it streams; the window must follow, or the wider card is centred
+    /// in the old frame and clipped on both sides (the first real answer
+    /// was). Observation fires once per change, so it re-registers.
+    private func observeModel() {
+        withObservationTracking {
+            _ = model.state
+            _ = model.answer
+            _ = model.outcome
+            _ = model.proposal
+            _ = model.failure
+            _ = model.options
+            _ = model.chips
+            _ = model.selection
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.refit()
+                self?.observeModel()
+            }
+        }
+    }
+
+    /// Size the window to the card's current fitting size, in place.
+    func refit() {
+        guard isVisible else { return }
+        host.layoutSubtreeIfNeeded()
+        let size = host.fittingSize
+        guard size.width >= 100, size.height >= 40 else { return }
+        if abs(size.width - frame.width) > 0.5 || abs(size.height - frame.height) > 0.5 {
+            place(size: size)
+        }
     }
 
     /// Re-anchor after the hosting view changed the window's size, so a
