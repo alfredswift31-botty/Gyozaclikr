@@ -17,7 +17,7 @@ enum Replace {
         let payload = insertBelow ? "\n" + text : text
         guard selection.kind == .text, selection.sourceApp != nil else { return copyInstead(text, app: app) }
         if selection.isEditable, AXWriter.write(payload, insertBelow: insertBelow) { return .done(verb) }
-        if await PasteWriter.paste(payload) { return .done("\(insertBelow ? "Inserted" : "Pasted over the selection") with ⌘V in \(app)") }
+        if await PasteWriter.paste(payload, to: selection.sourceApp?.pid) { return .done("\(insertBelow ? "Inserted" : "Pasted over the selection") with ⌘V in \(app)") }
         return copyInstead(text, app: app)
     }
 
@@ -90,16 +90,17 @@ enum AXWriter {
 }
 
 /// The ⌘V path: the answer goes on the pasteboard flagged transient, ⌘V is
-/// posted after 50 ms, and the previous contents come back after 300 ms.
+/// posted to the source app's process after 50 ms, and the previous
+/// contents come back after 300 ms.
 enum PasteWriter {
-    static func paste(_ text: String) async -> Bool {
+    static func paste(_ text: String, to pid: pid_t? = nil) async -> Bool {
         let pasteboard = NSPasteboard.general
         let snapshot = PasteboardSnapshot.take(from: pasteboard)
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
         pasteboard.setData(Data(), forType: PasteboardSnapshot.transientType)
         try? await Task.sleep(for: .milliseconds(50))
-        guard KeyPress.commandV() else {
+        guard KeyPress.commandV(to: pid) else {
             snapshot.restore(to: pasteboard)
             return false
         }
@@ -111,16 +112,25 @@ enum PasteWriter {
 
 // The pasteboard snapshot lives in Capture (SelectionReader.swift): one type, used by the ⌘C read and the ⌘V write.
 
-/// A synthetic ⌘V at the HID tap, which the frontmost app receives.
+/// A synthetic ⌘V, posted into the source app's own event queue. Not at the
+/// HID tap: the box is a non-activating panel that holds keyboard focus for
+/// its field, so a system-level keystroke lands in the box (1.1.1's Replace
+/// reported a paste that reached nothing). `postToPid` reaches the app's
+/// key window and its selection whether or not it has keyboard focus.
 enum KeyPress {
-    static func commandV() -> Bool {
+    static func commandV(to pid: pid_t?) -> Bool {
         let source = CGEventSource(stateID: .combinedSessionState)
         guard let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else { return false }
         down.flags = .maskCommand
         up.flags = .maskCommand
-        down.post(tap: .cghidEventTap)
-        up.post(tap: .cghidEventTap)
+        if let pid {
+            down.postToPid(pid)
+            up.postToPid(pid)
+        } else {
+            down.post(tap: .cghidEventTap)
+            up.post(tap: .cghidEventTap)
+        }
         return true
     }
 }
