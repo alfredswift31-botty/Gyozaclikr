@@ -15,8 +15,8 @@ A pointer-level assistant for the Mac: select, summon, ask, act. On-device.
 | 1.0.6 | 2026-10-06 | [v1.0.6](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.6) |
 | 1.0.7 | 2026-10-06 | [v1.0.7](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.7) |
 | 1.0.8 | 2026-10-06 | [v1.0.8](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.8) |
-| 1.0.10 | 2026-10-06 | [v1.0.10](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.10) |
 | 1.0.9 | 2026-10-06 | [v1.0.9](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.9) |
+| 1.0.10 | 2026-10-06 | [v1.0.10](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.10) |
 
 ## Research and design (5 Oct 2026)
 Three agents researched in parallel: Apple's APIs, the system-integration layer, and the product and the box. Reports in `docs/research/`. The decisive finding: Apple's on-device Foundation Model takes images on macOS 27 (`Attachment`), verified against Apple's documentation data, so the app leads with Apple Intelligence for pictures and keeps the owner's Qwen3-VL via Ollama as the labelled second engine. Decisions: a deterministic chip row plus a pre-router before any free-text goes to the model; quote verification on every extraction (GyozaYap measured the model inventing items); confirmation cards for anything outward; a self-signed certificate rather than ad-hoc signing, because macOS ties Accessibility and Screen Recording grants to the designated requirement. "Who is this person" and "where can I buy it" are refused by design.
