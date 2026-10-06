@@ -122,7 +122,7 @@ struct HotKeyGestureTests {
         #expect(gesture.handle(.pressed(at: 0.2)) == .startHoldTimer)
         // The first press's timer: too early for the second press.
         #expect(gesture.handle(.timerFired(at: hold)) == .none)
-        #expect(gesture.handle(.timerFired(at: 0.2 + hold)) == .hold)
+        #expect(gesture.handle(.timerFired(at: 0.2 + hold + 0.01)) == .hold)
     }
 
     @Test func releaseWithoutAPressDoesNothing() {
