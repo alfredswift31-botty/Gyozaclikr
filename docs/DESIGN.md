@@ -27,7 +27,7 @@ Enter sends · ⇧Enter newline · Esc closes (a second Esc first cancels a runn
 One word in secondary colour, specific to the task: "Reading…", "Rewriting…", "Extracting…". A 2-pt accent bar under it fills over the first-token budget and stays full while streaming. No spinner. The one animation allowed elsewhere: the menu-bar gyoza nudges once when a result lands.
 
 ## Budgets
-Box visible < 100 ms (pre-created panel; capture runs after showing). OCR < 400 ms. First token < 1 s on-device with prewarm; past 2.5 s the status reads "Model is warming up…". Ollama: 10–40 s, elapsed seconds in mono.
+Box visible < 100 ms (pre-created panel; the selection is read first, because a box that takes keyboard focus would read itself). OCR < 400 ms. First token < 1 s on-device with prewarm; past 2.5 s the status reads "Model is warming up…". Ollama: 10–40 s, elapsed seconds in mono.
 
 ## Engines, visibly
 Apple's model is the default and is named in the collapsed row. The Ollama state is labelled "Ollama · Qwen3-VL-8B · on this Mac" and carries a 2-pt blue-to-violet gradient hairline along the box's top edge: the gradient means "the other engine". A non-localhost Ollama host adds "leaves this Mac" and a one-time confirmation.

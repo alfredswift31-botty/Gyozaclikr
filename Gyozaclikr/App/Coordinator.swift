@@ -74,10 +74,11 @@ final class Coordinator {
         case .given(let selection):
             present(selection, anchor: .pointer(NSEvent.mouseLocation))
         case .selection:
-            // The box first (the 100 ms budget), the reading after.
-            present(.none, anchor: .pointer(NSEvent.mouseLocation))
-            model.status = "Reading…"
-            Task { await readSelection() }
+            // Read before showing: once the box is key, the focused element
+            // and a simulated ⌘C both land on the box itself (the first
+            // TextEdit test read nothing). An AX read takes milliseconds.
+            companion.boxShown()
+            Task { await readThenPresent() }
         }
         Task { await apple.prewarm() }
     }
@@ -111,30 +112,27 @@ final class Coordinator {
         }
     }
 
-    private func readSelection() async {
+    private func readThenPresent() async {
         let result = await selectionReader.readSelection()
-        guard model.state != .hidden else { return }
+        let pointer = NSEvent.mouseLocation
         switch result {
         case .success(let selection):
-            lastSelection = selection
-            model.present(selection, chips: Self.chips(for: selection), suggested: Self.suggestedChip(for: selection))
-            model.engine = preferredEngine(for: selection)
-            if let bounds = selection.bounds { panel.show(anchoredTo: .selection(bounds)) }
+            present(selection, anchor: selection.bounds.map { .selection($0) } ?? .pointer(pointer))
         case .failure(.nothingSelected):
             if let word = await selectionReader.wordUnderPointer() {
-                lastSelection = word
-                model.present(word, chips: [], suggested: nil)
-                if let bounds = word.bounds { panel.show(anchoredTo: .selection(bounds)) }
+                present(word, anchor: word.bounds.map { .selection($0) } ?? .pointer(pointer))
             } else {
-                model.present(.none, chips: [], suggested: nil)
+                present(.none, anchor: .pointer(pointer))
             }
         case .failure(.accessibilityDenied):
+            present(.none, anchor: .pointer(pointer))
             // The system dialog once per launch; afterwards the Privacy pane.
             let state = await request(.accessibility)
             model.fail(.other(state == .granted
                 ? "Accessibility was just granted. Press the shortcut again."
                 : "Accessibility isn't granted, so the selection can't be read. Turn on Gyozaclikr in System Settings › Privacy & Security › Accessibility, then press the shortcut again."))
         case .failure(let failure):
+            present(.none, anchor: .pointer(pointer))
             model.fail(Self.failure(for: failure))
         }
     }
