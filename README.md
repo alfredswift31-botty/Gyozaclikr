@@ -19,6 +19,7 @@ Status: 1.0 built and released from CI; not yet verified on a Mac. See `docs/BRI
 A small olive gyoza floats beside the pointer while the app is running, so you can see it is alive; it steps aside while the box is open. The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so; record any combination you like there.
 
 ## Versions
+- **1.0.7** (6 Oct 2026): the box widens with its answer instead of clipping it.
 - **1.0.6** (6 Oct 2026): the selection is read before the box opens; the box had been taking keyboard focus first and reading itself.
 - **1.0.5** (6 Oct 2026): the first press asks for Accessibility; a request over nothing selected is refused with the reason instead of going to the model.
 - **1.0.4** (6 Oct 2026): the box appears without a fade; Settings › Engines shows what the box did on the last press, for diagnosis.

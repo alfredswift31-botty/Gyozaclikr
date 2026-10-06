@@ -41,7 +41,8 @@ final class BoxPanel: NSPanel {
         backgroundColor = .clear
         hasShadow = true
         host.rootView = AnyView(BoxView(model: model, registerInput: { [weak self] field in self?.inputField = field }))
-        host.sizingOptions = [.preferredContentSize]
+        // The panel sizes itself (refit): the hosting view's own sizing fought it.
+        host.sizingOptions = []
         contentView = host
         observers.append(NotificationCenter.default.addObserver(forName: NSWindow.didResizeNotification, object: self, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.follow() }
@@ -81,10 +82,11 @@ final class BoxPanel: NSPanel {
         self.anchor = anchor
         if !isVisible { shownAt = Date() }
         host.layoutSubtreeIfNeeded()
-        var size = host.fittingSize
+        var size = CGSize(width: model.width, height: host.fittingSize.height)
         // A hosting view that has not laid out yet reports nothing; never show a zero box.
-        if size.width < 100 || size.height < 40 { size = CGSize(width: Theme.Box.width, height: 140) }
+        if size.height < 40 { size.height = 140 }
         place(size: size)
+        remeasureSoon()
         // No fade: a window animation that fails to run would leave the box
         // on screen at alpha 0, which is indistinguishable from absent.
         alphaValue = 1
@@ -134,15 +136,38 @@ final class BoxPanel: NSPanel {
         }
     }
 
-    /// Size the window to the card's current fitting size, in place.
+    /// Size the window to the card, in place. The width is a function of
+    /// the state (360, or 480 with an answer) and is applied at once; the
+    /// height is measured now and again a frame later, because observation
+    /// fires before SwiftUI has rendered the change (1.0.5 measured the old
+    /// layout and kept the old width, so the wider card was clipped).
     func refit() {
         guard isVisible else { return }
         host.layoutSubtreeIfNeeded()
-        let size = host.fittingSize
-        guard size.width >= 100, size.height >= 40 else { return }
+        var height = host.fittingSize.height
+        if height < 40 { height = frame.height }
+        let size = CGSize(width: model.width, height: height)
         if abs(size.width - frame.width) > 0.5 || abs(size.height - frame.height) > 0.5 {
             place(size: size)
         }
+        remeasureSoon()
+    }
+
+    private var remeasure: DispatchWorkItem?
+
+    private func remeasureSoon() {
+        remeasure?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.isVisible else { return }
+                self.host.layoutSubtreeIfNeeded()
+                let height = self.host.fittingSize.height
+                guard height >= 40, abs(height - self.frame.height) > 0.5 || abs(self.model.width - self.frame.width) > 0.5 else { return }
+                self.place(size: CGSize(width: self.model.width, height: height))
+            }
+        }
+        remeasure = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06, execute: work)
     }
 
     /// Re-anchor after the hosting view changed the window's size, so a

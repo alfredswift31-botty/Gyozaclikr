@@ -13,6 +13,7 @@ A pointer-level assistant for the Mac: select, summon, ask, act. On-device.
 | 1.0.4 | 2026-10-06 | [v1.0.4](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.4) |
 | 1.0.5 | 2026-10-06 | [v1.0.5](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.5) |
 | 1.0.6 | 2026-10-06 | [v1.0.6](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.6) |
+| 1.0.7 | 2026-10-06 | [v1.0.7](https://github.com/alfredswift31-botty/Gyozaclikr/releases/tag/v1.0.7) |
 
 ## Research and design (5 Oct 2026)
 Three agents researched in parallel: Apple's APIs, the system-integration layer, and the product and the box. Reports in `docs/research/`. The decisive finding: Apple's on-device Foundation Model takes images on macOS 27 (`Attachment`), verified against Apple's documentation data, so the app leads with Apple Intelligence for pictures and keeps the owner's Qwen3-VL via Ollama as the labelled second engine. Decisions: a deterministic chip row plus a pre-router before any free-text goes to the model; quote verification on every extraction (GyozaYap measured the model inventing items); confirmation cards for anything outward; a self-signed certificate rather than ad-hoc signing, because macOS ties Accessibility and Screen Recording grants to the designated requirement. "Who is this person" and "where can I buy it" are refused by design.
@@ -49,6 +50,9 @@ Third fault, from the next two screenshots: the first answers came back right (�
 
 ## 1.0.6: read before showing (6 Oct 2026)
 Accessibility granted, text selected in TextEdit, and 1.0.5 still read nothing. The coordinator showed the box first (the 100 ms budget) and read after; the box takes key, so the Accessibility read of the focused element and the simulated ⌘C both landed on the box's own empty field. The order is now read, then show: an Accessibility read takes milliseconds, the ⌘C fallback at most 150 ms, both inside the budget. The design note in docs/DESIGN.md ("capture runs after showing") was wrong for a box that takes keyboard focus.
+
+## 1.0.7: the clipped answer, second attempt (6 Oct 2026)
+1.0.6 read the selection (the quote appeared, the model made it formal) and the answer was still clipped on both sides. 1.0.5's refit measured the hosting view's fitting size when the observation fired, which is before SwiftUI renders the change, so it measured the old 360-pt layout and kept the old width. The panel now takes its width from the state alone (360, or 480 with an answer), applies it at once, measures the height now and again 60 ms later, and no longer lets the hosting view size the window (its own sizing fought the panel's).
 
 ## Where things stand (6 Oct 2026)
 Built in one night from the research: a scaffold, four module agents on their own branches, a coordinator. Nothing has run on a Mac yet. The order of verification: the Engines pane (does Apple's model take an image on this M4?), the box on a text selection in TextEdit (Replace), the same in Safari and a Chromium app, a region capture (the Screen Recording prompt), one chip, one free-text rewrite, one reminder with a date (the confirmation card and the EventKit prompt), one `/local` image question against Ollama.
