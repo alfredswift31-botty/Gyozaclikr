@@ -15,6 +15,10 @@ final class BoxPanel: NSPanel {
     /// (the panel taking key can activate this app for a moment) is not a
     /// reason to close it.
     private var shownAt: Date?
+    /// True while the panel sets its own frame, so a move is not mistaken for the user's.
+    private var placing = false
+    /// The user dragged the box: it keeps its top-left corner from then on.
+    private var userMoved = false
     private var mouseMonitors: [Any] = []
     private var observers: [NSObjectProtocol] = []
 
@@ -33,7 +37,8 @@ final class BoxPanel: NSPanel {
         hidesOnDeactivate = false
         becomesKeyOnlyIfNeeded = false
         isReleasedWhenClosed = false
-        isMovableByWindowBackground = false
+        // Drag the card anywhere by its background; the box then stays where it was put.
+        isMovableByWindowBackground = true
         animationBehavior = .none
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
@@ -50,21 +55,12 @@ final class BoxPanel: NSPanel {
             MainActor.assumeIsolated { self?.follow() }
         })
         observeModel()
-        // Switching apps or clicking elsewhere closes the box; observed once, acted on only while visible.
-        observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] note in
+        // The box stays until closed (the × or Esc): switching apps or clicking
+        // elsewhere leaves it, so an answer can be read beside other work.
+        observers.append(NotificationCenter.default.addObserver(forName: NSWindow.didMoveNotification, object: self, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, self.isVisible, self.settled else { return }
-                let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-                // Neither this app taking key nor the source app re-activating is a switch away.
-                if let app, app.processIdentifier == NSRunningApplication.current.processIdentifier { return }
-                if let app, app.processIdentifier == self.model.selection.sourceApp?.pid { return }
-                self.model.onClose()
-            }
-        })
-        observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self, self.isVisible, self.settled else { return }
-                self.model.onClose()
+                guard let self, !self.placing else { return }
+                self.userMoved = true
             }
         })
     }
@@ -83,6 +79,8 @@ final class BoxPanel: NSPanel {
     func show(anchoredTo anchor: BoxAnchor) {
         self.anchor = anchor
         if !isVisible { shownAt = Date() }
+        // A fresh summon goes to the new selection, wherever the last box was dragged.
+        userMoved = false
         host.layoutSubtreeIfNeeded()
         var size = CGSize(width: model.width, height: host.fittingSize.height)
         // A hosting view that has not laid out yet reports nothing; never show a zero box.
@@ -191,12 +189,21 @@ final class BoxPanel: NSPanel {
     }
 
     private func place(size: CGSize) {
-        guard let anchor else { return }
-        let point = CGPoint(x: anchor.rect.midX, y: anchor.rect.midY)
-        let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main ?? NSScreen.screens.first
-        let visible = screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
-        let target = BoxPlacement.frame(size: size, anchor: anchor, screenVisible: visible)
-        if frame != target { setFrame(target, display: true) }
+        let target: CGRect
+        if userMoved {
+            // Where the user put it: grow downward from the same top-left corner.
+            target = CGRect(x: frame.minX, y: frame.maxY - size.height, width: size.width, height: size.height)
+        } else {
+            guard let anchor else { return }
+            let point = CGPoint(x: anchor.rect.midX, y: anchor.rect.midY)
+            let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main ?? NSScreen.screens.first
+            let visible = screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+            target = BoxPlacement.frame(size: size, anchor: anchor, screenVisible: visible)
+        }
+        guard frame != target else { return }
+        placing = true
+        setFrame(target, display: true)
+        placing = false
     }
 
     // MARK: Keys the field does not see
@@ -229,29 +236,7 @@ final class BoxPanel: NSPanel {
 
     // MARK: Outside
 
-    private func installMonitors() {
-        guard mouseMonitors.isEmpty else { return }
-        let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-        if let global = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: { [weak self] _ in
-            MainActor.assumeIsolated { self?.clickedOutside() }
-        }) {
-            mouseMonitors.append(global)
-        }
-        if let local = NSEvent.addLocalMonitorForEvents(matching: mask, handler: { [weak self] event in
-            if let self, event.window !== self { MainActor.assumeIsolated { self.clickedOutside() } }
-            return event
-        }) {
-            mouseMonitors.append(local)
-        }
-    }
-
-    private func removeMonitors() {
-        for monitor in mouseMonitors { NSEvent.removeMonitor(monitor) }
-        mouseMonitors = []
-    }
-
-    private func clickedOutside() {
-        guard isVisible else { return }
-        model.onClose()
-    }
+    /// Nothing outside the box closes it any more; the × and Esc do.
+    private func installMonitors() {}
+    private func removeMonitors() {}
 }

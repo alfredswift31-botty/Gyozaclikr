@@ -160,7 +160,11 @@ nonisolated enum DescriptionText {
         if let subject = sentence(subject) { sentences.append(subject) }
         if let meaning = sentence(meaning) { sentences.append(meaning) }
         if let setting = sentence(setting) { sentences.append(setting) }
-        if let text = sentence(visibleText) { sentences.append("Text: " + text) }
+        // Visible text is quoted as written: no capitalising.
+        let quoted = visibleText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !quoted.isEmpty, !["none", "n/a", "nothing", "unclear"].contains(quoted.lowercased()) {
+            sentences.append("Text: " + quoted + (quoted.hasSuffix(".") ? "" : "."))
+        }
         if sentences.count < 3, let uncertainty = sentence(uncertainty) { sentences.append(uncertainty) }
         return sentences.joined(separator: " ")
     }

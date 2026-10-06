@@ -59,6 +59,19 @@ struct BoxView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: Theme.Box.radius))
         .overlay(RoundedRectangle(cornerRadius: Theme.Box.radius).strokeBorder(BoxColor.hairline, lineWidth: hairline))
+        .overlay(alignment: .topTrailing) {
+            Button { model.onClose() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(BoxColor.tertiary)
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(4)
+            .accessibilityLabel("Close")
+            .keyboardShortcut("w", modifiers: .command)
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(model.accessibilityTitle)
         .onGeometryChange(for: CGSize.self, of: { $0.size }) { size in onSize?(size) }

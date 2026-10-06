@@ -11,7 +11,7 @@ Text: 8 pt below the bottom-left of the selection's last line, from the Accessib
 ## States
 1. **Summoned.** Appears at full opacity within 100 ms; a 120 ms fade, no scale. The model prewarms here.
 2. **Empty.** Placeholder "Ask about this selection…" (or "…this image", "Define *word*…"), the content preview, the chip row with the first chip pre-suggested (dim accent outline; Tab accepts it).
-3. **Typing.** Chips filter by prefix. Enter sends; ⇧Enter newline; ↑ recalls the last request; Esc closes.
+3. **Typing.** Chips filter by prefix. Enter sends; ⇧Enter newline; ↑ recalls the last request; Esc or the × closes. The card can be dragged anywhere by its background and stays where it was put, through app switches and clicks elsewhere, until closed (the owner's ask, 6 Oct: an answer should be readable beside other work).
 4. **Streaming.** The chip row collapses to one line, "Apple Intelligence · on-device", in secondary colour. The answer streams below with light Markdown: bold, lists, inline and fenced code in mono with a hairline box; no headings; tables offered as CSV via Copy, not drawn. Text appears per snapshot with a 40 ms coalescing window.
 5. **Done.** Action row: **Replace · Copy · Insert below · Send… · ⋯**. Replace is primary when the source was editable; Copy otherwise. "Open in new window" appears past about 12 lines.
 6. **Error, refused, unavailable.** Same card; one sentence in secondary colour and up to two chips. No icon, no red. The availability messages are GyozaYap's four.
