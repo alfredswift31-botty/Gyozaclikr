@@ -11,6 +11,10 @@ final class BoxPanel: NSPanel {
     private let host: NSHostingView<AnyView>
     private weak var inputField: InputField?
     private var anchor: BoxAnchor?
+    /// When the box last came up: activation churn right after showing
+    /// (the panel taking key can activate this app for a moment) is not a
+    /// reason to close it.
+    private var shownAt: Date?
     private var mouseMonitors: [Any] = []
     private var observers: [NSObjectProtocol] = []
 
@@ -45,19 +49,26 @@ final class BoxPanel: NSPanel {
         // Switching apps or clicking elsewhere closes the box; observed once, acted on only while visible.
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] note in
             MainActor.assumeIsolated {
-                guard let self, self.isVisible else { return }
+                guard let self, self.isVisible, self.settled else { return }
                 let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-                // The source app re-activating when the panel takes key is not a switch away.
+                // Neither this app taking key nor the source app re-activating is a switch away.
+                if let app, app.processIdentifier == NSRunningApplication.current.processIdentifier { return }
                 if let app, app.processIdentifier == self.model.selection.sourceApp?.pid { return }
                 self.model.onClose()
             }
         })
         observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, self.isVisible else { return }
+                guard let self, self.isVisible, self.settled else { return }
                 self.model.onClose()
             }
         })
+    }
+
+    /// Half a second after showing, activation changes mean the user left.
+    private var settled: Bool {
+        guard let shownAt else { return true }
+        return Date().timeIntervalSince(shownAt) > 0.5
     }
 
     override var canBecomeKey: Bool { true }
@@ -67,6 +78,7 @@ final class BoxPanel: NSPanel {
     /// coordinator calls this again once Accessibility answers.
     func show(anchoredTo anchor: BoxAnchor) {
         self.anchor = anchor
+        if !isVisible { shownAt = Date() }
         host.layoutSubtreeIfNeeded()
         place(size: host.fittingSize)
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
