@@ -104,6 +104,27 @@ final class BoxModel {
     /// 360 pt, or 480 once the conversation has a turn.
     var width: CGFloat { state.isWide || !turns.isEmpty ? Theme.Box.wideWidth : Theme.Box.width }
 
+    /// The size the user dragged the box to (the corner grip or an edge),
+    /// kept across summons and launches; nil means the card sizes itself to
+    /// its content. "Automatic size" in the ⋯ menu clears it.
+    var userSize: CGSize? = BoxModel.savedSize() {
+        didSet { Self.save(userSize) }
+    }
+
+    nonisolated static func savedSize(_ defaults: UserDefaults = .standard) -> CGSize? {
+        let width = defaults.double(forKey: SettingsKey.boxWidth)
+        let height = defaults.double(forKey: SettingsKey.boxHeight)
+        return width >= Self.minSize.width && height >= Self.minSize.height ? CGSize(width: width, height: height) : nil
+    }
+
+    private nonisolated static func save(_ size: CGSize?, _ defaults: UserDefaults = .standard) {
+        defaults.set(size?.width ?? 0, forKey: SettingsKey.boxWidth)
+        defaults.set(size?.height ?? 0, forKey: SettingsKey.boxHeight)
+    }
+
+    /// Smaller than this and the field, a row of actions and one line of answer no longer fit.
+    nonisolated static let minSize = CGSize(width: 280, height: 160)
+
     var placeholder: String {
         if !turns.isEmpty { return "Ask a follow-up…" }
         return switch selection.kind {

@@ -382,5 +382,8 @@ nonisolated enum SettingsKey {
     static let ollamaVisionModel = "ollamaVisionModel"
     static let ollamaTextModel = "ollamaTextModel"
     static let historyLimit = "historyLimit"
+    /// The box size the user dragged to; 0 means automatic.
+    static let boxWidth = "boxWidth"
+    static let boxHeight = "boxHeight"
     static let openAtLogin = "openAtLogin"
 }

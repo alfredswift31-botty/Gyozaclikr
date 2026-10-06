@@ -27,7 +27,7 @@ final class BoxPanel: NSPanel {
         let box = BoxView(model: model, registerInput: nil)
         host = NSHostingView(rootView: AnyView(box))
         super.init(contentRect: NSRect(x: 0, y: 0, width: Theme.Box.width, height: 120),
-                   styleMask: [.nonactivatingPanel, .borderless, .fullSizeContentView],
+                   styleMask: [.nonactivatingPanel, .borderless, .fullSizeContentView, .resizable],
                    backing: .buffered, defer: false)
         // The card draws its own material, radius and hairline; the window
         // is clear and carries only its shadow.
@@ -40,6 +40,7 @@ final class BoxPanel: NSPanel {
         // The card's own drag gesture moves the panel (`drag(by:ended:)`);
         // AppKit's movable background never fired through the hosting view.
         isMovableByWindowBackground = false
+        minSize = BoxModel.minSize
         animationBehavior = .none
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
@@ -49,12 +50,21 @@ final class BoxPanel: NSPanel {
         host.rootView = AnyView(BoxView(model: model,
                                         registerInput: { [weak self] field in self?.inputField = field },
                                         onSize: { [weak self] size in self?.cardDidLayout(size) },
-                                        onDrag: { [weak self] delta, ended in self?.drag(by: delta, ended: ended) }))
+                                        onDrag: { [weak self] delta, ended in self?.drag(by: delta, ended: ended) },
+                                        onResize: { [weak self] delta, ended in self?.resize(by: delta, ended: ended) }))
         // The panel sizes itself (refit): the hosting view's own sizing fought it.
         host.sizingOptions = []
         contentView = host
         observers.append(NotificationCenter.default.addObserver(forName: NSWindow.didResizeNotification, object: self, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.follow() }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                // An edge drag (AppKit's live resize) is the user's size from then on.
+                if self.inLiveResize, !self.placing {
+                    self.model.userSize = self.frame.size
+                    self.userMoved = true
+                }
+                self.follow()
+            }
         })
         observeModel()
         // The box stays until closed (the × or Esc): switching apps or clicking
@@ -130,6 +140,7 @@ final class BoxPanel: NSPanel {
             _ = model.options
             _ = model.chips
             _ = model.selection
+            _ = model.userSize
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.refit()
@@ -191,6 +202,8 @@ final class BoxPanel: NSPanel {
     }
 
     private func place(size: CGSize) {
+        // The user's size wins over the content's; the card fills it.
+        let size = model.userSize ?? size
         let target: CGRect
         if userMoved {
             // Where the user put it: grow downward from the same top-left corner.
@@ -220,6 +233,35 @@ final class BoxPanel: NSPanel {
         let origin = dragOrigin ?? frame.origin
         dragOrigin = origin
         setFrameOrigin(CGPoint(x: origin.x + delta.width, y: origin.y + delta.height))
+    }
+
+    /// The frame when the current corner drag began.
+    private var resizeOrigin: CGRect?
+
+    /// Resize from the bottom-right grip: the right edge follows the
+    /// pointer's x, the bottom edge its y, the top-left corner stays.
+    func resize(by delta: CGSize, ended: Bool) {
+        if ended { resizeOrigin = nil; return }
+        let start = resizeOrigin ?? frame
+        resizeOrigin = start
+        let bounds = (screen ?? NSScreen.main)?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let target = Self.resized(from: start, by: delta, within: bounds)
+        guard target != frame else { return }
+        model.userSize = target.size
+        userMoved = true
+        placing = true
+        setFrame(target, display: true)
+        placing = false
+    }
+
+    /// Pure: the frame after a corner drag, clamped to the minimum size and
+    /// to the screen. Dragging down (negative y in AppKit) makes it taller.
+    nonisolated static func resized(from start: CGRect, by delta: CGSize, within bounds: CGRect) -> CGRect {
+        let maxWidth = max(BoxModel.minSize.width, bounds.maxX - start.minX)
+        let maxHeight = max(BoxModel.minSize.height, start.maxY - bounds.minY)
+        let width = min(max(start.width + delta.width, BoxModel.minSize.width), maxWidth)
+        let height = min(max(start.height - delta.height, BoxModel.minSize.height), maxHeight)
+        return CGRect(x: start.minX, y: start.maxY - height, width: width, height: height)
     }
 
     // MARK: Keys the field does not see

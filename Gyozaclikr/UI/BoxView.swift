@@ -20,6 +20,9 @@ struct BoxView: View {
     /// inner gestures and win over this one.
     var onDrag: ((CGSize, Bool) -> Void)?
     @State private var dragStart: CGPoint?
+    /// A drag on the corner grip: the same displacement, for the panel to resize by.
+    var onResize: ((CGSize, Bool) -> Void)?
+    @State private var resizeStart: CGPoint?
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
@@ -62,7 +65,7 @@ struct BoxView: View {
             }
         }
         .padding(Theme.Box.padding)
-        .frame(width: model.width, alignment: .topLeading)
+        .frame(width: model.userSize?.width ?? model.width, height: model.userSize?.height, alignment: .topLeading)
         .background(chrome)
         .overlay(alignment: .top) {
             if model.engine == .ollama, model.state.isWide {
@@ -83,6 +86,20 @@ struct BoxView: View {
             .padding(4)
             .accessibilityLabel("Close")
             .keyboardShortcut("w", modifiers: .command)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            ResizeGrip()
+                .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                    .onChanged { _ in
+                        let pointer = NSEvent.mouseLocation
+                        let start = resizeStart ?? pointer
+                        if resizeStart == nil { resizeStart = pointer }
+                        onResize?(CGSize(width: pointer.x - start.x, height: pointer.y - start.y), false)
+                    }
+                    .onEnded { _ in
+                        resizeStart = nil
+                        onResize?(.zero, true)
+                    })
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(model.accessibilityTitle)
@@ -153,8 +170,9 @@ struct BoxView: View {
                     Color.clear.frame(height: 1).id("end")
                 }
             }
-            .frame(maxHeight: 300)
-            .fixedSize(horizontal: false, vertical: true)
+            // Content-sized up to 300 pt; in a user-sized box, all the room there is.
+            .frame(maxHeight: model.userSize == nil ? 300 : .infinity)
+            .fixedSize(horizontal: false, vertical: model.userSize == nil)
             .onChange(of: model.answer) { proxy.scrollTo("end", anchor: .bottom) }
             .onChange(of: model.turns.count) { proxy.scrollTo("end", anchor: .bottom) }
         }
@@ -171,6 +189,23 @@ struct BoxView: View {
 }
 
 // MARK: - Pieces
+
+/// The corner grip: two short diagonals in the tertiary colour, a 16 pt
+/// target. The panel is also resizable by its edges; the grip is the
+/// visible promise.
+struct ResizeGrip: View {
+    var body: some View {
+        Path { path in
+            path.move(to: CGPoint(x: 10, y: 4)); path.addLine(to: CGPoint(x: 4, y: 10))
+            path.move(to: CGPoint(x: 10, y: 8)); path.addLine(to: CGPoint(x: 8, y: 10))
+        }
+        .stroke(BoxColor.tertiary, style: StrokeStyle(lineWidth: 1.2, lineCap: .round))
+        .frame(width: 16, height: 16)
+        .padding(2)
+        .contentShape(Rectangle())
+        .accessibilityLabel("Resize")
+    }
+}
 
 /// The selection: a two-line quote with a left rule and the token count,
 /// or a 48-pt thumbnail with the OCR word count. Nothing for a word.
@@ -298,6 +333,9 @@ struct ActionRow: View {
                 }
                 Button("Ask again") { model.resubmit() }
                 Button("History…") { model.onOpenHistory() }
+                if model.userSize != nil {
+                    Button("Automatic size") { model.userSize = nil }
+                }
             } label: {
                 Text("⋯")
                     .font(BoxFont.body)

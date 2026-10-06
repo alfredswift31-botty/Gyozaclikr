@@ -406,12 +406,38 @@ struct ThreadTests {
         #expect(Coordinator.contextualise("summarise", turns: []) == "summarise")
     }
 
+    @Test func cornerDragResizesFromTheTopLeft() {
+        let start = CGRect(x: 100, y: 500, width: 480, height: 300)
+        let screen = CGRect(x: 0, y: 0, width: 1440, height: 875)
+        // Right and down: wider and taller, same top-left.
+        let bigger = BoxPanel.resized(from: start, by: CGSize(width: 120, height: -200), within: screen)
+        #expect(bigger == CGRect(x: 100, y: 300, width: 600, height: 500))
+        // Too far up and left: the minimum, still anchored top-left.
+        let smallest = BoxPanel.resized(from: start, by: CGSize(width: -400, height: 400), within: screen)
+        #expect(smallest.size == BoxModel.minSize)
+        #expect(smallest.minX == 100 && smallest.maxY == 800)
+        // Off the screen: clamped to its edges.
+        let clamped = BoxPanel.resized(from: start, by: CGSize(width: 2000, height: -2000), within: screen)
+        #expect(clamped.maxX == 1440 && clamped.minY == 0)
+    }
+
+    @Test func userSizeRoundTripsThroughDefaults() {
+        let defaults = UserDefaults(suiteName: "GyozaclikrTests.boxSize")!
+        defaults.removePersistentDomain(forName: "GyozaclikrTests.boxSize")
+        #expect(BoxModel.savedSize(defaults) == nil)
+        defaults.set(520.0, forKey: SettingsKey.boxWidth)
+        defaults.set(400.0, forKey: SettingsKey.boxHeight)
+        #expect(BoxModel.savedSize(defaults) == CGSize(width: 520, height: 400))
+        defaults.set(0.0, forKey: SettingsKey.boxWidth)
+        #expect(BoxModel.savedSize(defaults) == nil, "0 means automatic")
+    }
+
     @Test func fenceMarksNeverReachTheAnswer() {
         #expect(BoxModel.unfenced("where road works are taking place.⟫") == "where road works are taking place.")
         #expect(BoxModel.unfenced("⟪quoted⟫ back") == "quoted back")
         #expect(BoxModel.unfenced("plain") == "plain")
         let model = UIFixtures.model(.empty)
-        model.begin(engine: .apple, status: "Working…")
+        model.begin(status: "Working…", engine: .apple, request: "x")
         model.finish(Answer(text: "done.⟫", kind: .text, engine: .apple))
         #expect(model.answer == "done.")
         #expect(model.turns.last?.answer == "done.")
