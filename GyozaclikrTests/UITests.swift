@@ -377,14 +377,14 @@ struct PointerCompanionTests {
     @Test func theGyozaSitsBelowRightOfThePointer() {
         let origin = PointerCompanion.origin(forPointer: CGPoint(x: 100, y: 500))
         #expect(origin.x == 114)
-        #expect(origin.y == 500 - 26 - PointerCompanion.size / 2)
+        #expect(origin.y == 500 - 26 - PointerCompanion.size.height / 2)
     }
 
     @Test(arguments: [false, true])
     func companion(dark: Bool) throws {
         let sheet = HStack(spacing: 24) {
             PointerCompanionView()
-            PointerCompanionView().scaleEffect(4).frame(width: 120, height: 120)
+            PointerCompanionView().scaleEffect(3).frame(width: 114, height: 102)
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

@@ -1,0 +1,18 @@
+{
+  "images" : [
+    {
+      "filename" : "pointer-gyoza@1x.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "pointer-gyoza@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

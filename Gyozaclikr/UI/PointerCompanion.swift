@@ -1,14 +1,15 @@
 import AppKit
 import SwiftUI
 
-/// A small olive gyoza that floats beside the pointer while the app runs:
-/// the owner's sign that Gyozaclikr is open and listening. Click-through,
+/// A small gyoza that floats beside the pointer while the app runs: the
+/// owner's sign that Gyozaclikr is open and listening. The owner's own
+/// drawing (1.1.5), cut out of its background, replaced the olive hologram. Click-through,
 /// never key, on every Space, hidden while the box is up. It follows the
 /// pointer through a global mouse-moved monitor (no permission needed) at a
 /// fixed offset below-right, and bobs gently unless Reduce Motion is on.
 final class PointerCompanion {
-    /// Window size: the glyph plus room for its glow.
-    static let size: CGFloat = 30
+    /// Window size: the 32 × 28 pt drawing plus room for the bob.
+    static let size = CGSize(width: 38, height: 34)
     /// Where the glyph sits relative to the pointer's tip.
     static let offset = CGPoint(x: 14, y: -26)
 
@@ -57,11 +58,11 @@ final class PointerCompanion {
 
     /// Pure: the window's bottom-left for a pointer tip, in AppKit coordinates.
     nonisolated static func origin(forPointer pointer: CGPoint) -> CGPoint {
-        CGPoint(x: pointer.x + offset.x, y: pointer.y + offset.y - size / 2)
+        CGPoint(x: pointer.x + offset.x, y: pointer.y + offset.y - size.height / 2)
     }
 
     private static func makeWindow() -> NSPanel {
-        let panel = NSPanel(contentRect: CGRect(x: 0, y: 0, width: size, height: size),
+        let panel = NSPanel(contentRect: CGRect(x: 0, y: 0, width: size.width, height: size.height),
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.level = .statusBar
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
@@ -92,24 +93,18 @@ final class PointerCompanion {
     }
 }
 
-/// The hologram: an olive gyoza over a soft glow of the same colour, at
-/// 85 % opacity. Static; the window's layer does the bobbing.
+/// The owner's gyoza drawing (Assets › PointerGyoza, 1x and 2x), alone:
+/// no glow, full opacity. Static; the window's layer does the bobbing.
 struct PointerCompanionView: View {
-
-    static let olive = Color(red: 0.45, green: 0.56, blue: 0.16)
-    static let oliveLight = Color(red: 0.62, green: 0.74, blue: 0.30)
+    static let drawing = CGSize(width: 32, height: 28)
 
     var body: some View {
-        ZStack {
-            GyozaGlyph(grid: 18, stroke: 1.6, pleat: 1.1)
-                .fill(Self.olive.opacity(0.35))
-                .blur(radius: 3)
-            GyozaGlyph(grid: 18, stroke: 1.6, pleat: 1.1)
-                .fill(LinearGradient(colors: [Self.oliveLight, Self.olive], startPoint: .top, endPoint: .bottom))
-        }
-        .frame(width: 20, height: 20)
-        .padding(5)
-        .opacity(0.85)
-        .accessibilityHidden(true)
+        Image("PointerGyoza")
+            .resizable()
+            .interpolation(.high)
+            .aspectRatio(contentMode: .fit)
+            .frame(width: Self.drawing.width, height: Self.drawing.height)
+            .frame(width: PointerCompanion.size.width, height: PointerCompanion.size.height)
+            .accessibilityHidden(true)
     }
 }

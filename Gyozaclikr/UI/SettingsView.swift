@@ -122,7 +122,7 @@ private struct GeneralPane: View {
                 }
                 .frame(width: 140)
             }
-            Toggle("Show the olive gyoza beside the pointer", isOn: $pointerGyoza)
+            Toggle("Show the gyoza beside the pointer", isOn: $pointerGyoza)
             Toggle("Show a pill after a drag selection", isOn: $pillEnabled)
                 .disabled(true)
         } header: {
