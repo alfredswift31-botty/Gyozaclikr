@@ -3,19 +3,30 @@ import SwiftUI
 
 /// A small gyoza that floats beside the pointer while the app runs: the
 /// owner's sign that Gyozaclikr is open and listening. The owner's own
-/// drawing (1.1.5), cut out of its background, replaced the olive hologram. Click-through,
-/// never key, on every Space, hidden while the box is up. It follows the
-/// pointer through a global mouse-moved monitor (no permission needed) at a
-/// fixed offset below-right, and bobs gently unless Reduce Motion is on.
+/// drawing (1.1.5), cut out of its background, replaced the olive hologram.
+/// Click-through, never key, on every Space, hidden while the box is up.
+/// It follows the pointer through a global mouse-moved monitor at a fixed
+/// offset below-right, and bobs gently unless Reduce Motion is on.
+///
+/// It behaves like the cursor it sits beside (1.1.6): it hides when the
+/// owner types, as macOS hides the pointer, and comes back on the first
+/// mouse move; and it floats above menus, because the pointer does.
 final class PointerCompanion {
     /// Window size: the 32 × 28 pt drawing plus room for the bob.
     static let size = CGSize(width: 38, height: 34)
     /// Where the glyph sits relative to the pointer's tip.
     static let offset = CGPoint(x: 14, y: -26)
+    /// Above context and pop-up menus (pop-up menu level is 101) and the
+    /// status bar, below the cursor: the assistive-technology layer that
+    /// pointer highlighters use. At `.statusBar` (1.0.3 to 1.1.5) every
+    /// open menu covered the gyoza while the pointer sat on top of it.
+    static let level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.assistiveTechHighWindow)))
 
     private var window: NSPanel?
-    private var monitor: Any?
+    private var mouseMonitor: Any?
+    private var keyMonitor: Any?
     private var hiddenForBox = false
+    private var hiddenForTyping = false
     private(set) var isEnabled = false
 
     /// Start following the pointer, or stop. Idempotent.
@@ -23,16 +34,27 @@ final class PointerCompanion {
         isEnabled = enabled
         if enabled {
             if window == nil { window = Self.makeWindow() }
-            if monitor == nil {
-                monitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged]) { [weak self] _ in
-                    MainActor.assumeIsolated { self?.follow() }
+            if mouseMonitor == nil {
+                mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged]) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.mouseMoved() }
                 }
             }
-            follow()
-            if !hiddenForBox { window?.orderFrontRegardless() }
+            if keyMonitor == nil {
+                // Key events from other apps reach a global monitor only with the
+                // Accessibility grant, which the app already holds for reading
+                // selections; without it the gyoza simply never hides for typing.
+                keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                    let hides = Self.hidesWhileTyping(event.modifierFlags)
+                    MainActor.assumeIsolated { if hides { self?.typed() } }
+                }
+            }
+            hiddenForTyping = false
+            refresh()
         } else {
-            if let monitor { NSEvent.removeMonitor(monitor) }
-            monitor = nil
+            if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
+            if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+            mouseMonitor = nil
+            keyMonitor = nil
             window?.orderOut(nil)
         }
     }
@@ -40,14 +62,51 @@ final class PointerCompanion {
     /// The box is up: step aside. Back when it closes.
     func boxShown() {
         hiddenForBox = true
-        window?.orderOut(nil)
+        refresh()
     }
 
     func boxHidden() {
         hiddenForBox = false
-        guard isEnabled else { return }
+        hiddenForTyping = false
+        refresh()
+    }
+
+    /// A key went down in another app: hide until the mouse moves, as the
+    /// cursor does. Only on the change, so a burst of typing costs nothing.
+    private func typed() {
+        guard isEnabled, !hiddenForTyping else { return }
+        hiddenForTyping = true
+        refresh()
+    }
+
+    private func mouseMoved() {
         follow()
-        window?.orderFrontRegardless()
+        guard hiddenForTyping else { return }
+        hiddenForTyping = false
+        refresh()
+    }
+
+    /// Shown exactly when enabled, the box is closed and the owner is not typing.
+    private func refresh() {
+        guard let window else { return }
+        if Self.isVisible(enabled: isEnabled, hiddenForBox: hiddenForBox, hiddenForTyping: hiddenForTyping) {
+            follow()
+            window.orderFrontRegardless()
+        } else {
+            window.orderOut(nil)
+        }
+    }
+
+    /// Pure: whether the gyoza shows.
+    nonisolated static func isVisible(enabled: Bool, hiddenForBox: Bool, hiddenForTyping: Bool) -> Bool {
+        enabled && !hiddenForBox && !hiddenForTyping
+    }
+
+    /// Pure: whether a key press hides the gyoza. Typing does, Shift and
+    /// Option included (capitals, accents); a ⌘ or ⌃ shortcut does not,
+    /// since macOS leaves the cursor up for shortcuts too.
+    nonisolated static func hidesWhileTyping(_ flags: NSEvent.ModifierFlags) -> Bool {
+        flags.intersection([.command, .control]).isEmpty
     }
 
     private func follow() {
@@ -64,7 +123,7 @@ final class PointerCompanion {
     private static func makeWindow() -> NSPanel {
         let panel = NSPanel(contentRect: CGRect(x: 0, y: 0, width: size.width, height: size.height),
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.level = .statusBar
+        panel.level = level
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.isOpaque = false
         panel.backgroundColor = .clear

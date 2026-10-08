@@ -374,6 +374,25 @@ struct UISnapshotTests {
 
 @MainActor
 struct PointerCompanionTests {
+    @Test func theGyozaHidesWhileTypingLikeTheCursor() {
+        #expect(PointerCompanion.hidesWhileTyping([]))
+        #expect(PointerCompanion.hidesWhileTyping([.shift]), "capitals are typing")
+        #expect(PointerCompanion.hidesWhileTyping([.option]), "accents are typing")
+        #expect(!PointerCompanion.hidesWhileTyping([.command]), "a shortcut leaves the cursor up")
+        #expect(!PointerCompanion.hidesWhileTyping([.control]))
+        #expect(!PointerCompanion.hidesWhileTyping([.command, .shift]))
+        #expect(PointerCompanion.isVisible(enabled: true, hiddenForBox: false, hiddenForTyping: false))
+        #expect(!PointerCompanion.isVisible(enabled: true, hiddenForBox: false, hiddenForTyping: true))
+        #expect(!PointerCompanion.isVisible(enabled: true, hiddenForBox: true, hiddenForTyping: false))
+        #expect(!PointerCompanion.isVisible(enabled: false, hiddenForBox: false, hiddenForTyping: false))
+    }
+
+    @Test func theGyozaFloatsAboveMenus() {
+        #expect(PointerCompanion.level.rawValue > NSWindow.Level.popUpMenu.rawValue)
+        #expect(PointerCompanion.level.rawValue > NSWindow.Level.statusBar.rawValue)
+        #expect(PointerCompanion.level.rawValue < Int(CGWindowLevelForKey(.cursorWindow)))
+    }
+
     @Test func theGyozaSitsBelowRightOfThePointer() {
         let origin = PointerCompanion.origin(forPointer: CGPoint(x: 100, y: 500))
         #expect(origin.x == 114)
