@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import SwiftUI
 
 /// A small gyoza that floats beside the pointer while the app runs: the
@@ -25,6 +26,13 @@ final class PointerCompanion {
     private var window: NSPanel?
     private var mouseMonitor: Any?
     private var keyMonitor: Any?
+    /// Whether the key monitor was installed while the app held Accessibility.
+    /// macOS delivers other apps' keys only to a monitor installed while
+    /// trusted, and after every update the owner launches first and re-grants
+    /// second, so 1.1.6's monitor never heard a key.
+    private var keyMonitorTrusted = false
+    private var trustTimer: Timer?
+    private var trustObserver: NSObjectProtocol?
     private var hiddenForBox = false
     private var hiddenForTyping = false
     private(set) var isEnabled = false
@@ -39,15 +47,8 @@ final class PointerCompanion {
                     MainActor.assumeIsolated { self?.mouseMoved() }
                 }
             }
-            if keyMonitor == nil {
-                // Key events from other apps reach a global monitor only with the
-                // Accessibility grant, which the app already holds for reading
-                // selections; without it the gyoza simply never hides for typing.
-                keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-                    let hides = Self.hidesWhileTyping(event.modifierFlags)
-                    MainActor.assumeIsolated { if hides { self?.typed() } }
-                }
-            }
+            armKeyMonitor()
+            watchTrust()
             hiddenForTyping = false
             refresh()
         } else {
@@ -55,8 +56,71 @@ final class PointerCompanion {
             if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
             mouseMonitor = nil
             keyMonitor = nil
+            keyMonitorTrusted = false
+            trustTimer?.invalidate()
+            trustTimer = nil
+            if let trustObserver { DistributedNotificationCenter.default().removeObserver(trustObserver) }
+            trustObserver = nil
             window?.orderOut(nil)
         }
+    }
+
+    // MARK: Typing, and the Accessibility grant it depends on
+
+    /// (Re)install the key monitor, noting whether the app is trusted now.
+    private func armKeyMonitor() {
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            let hides = Self.hidesWhileTyping(event.modifierFlags)
+            MainActor.assumeIsolated { if hides { self?.typed() } }
+        }
+        keyMonitorTrusted = AXIsProcessTrusted()
+        if keyMonitorTrusted {
+            trustTimer?.invalidate()
+            trustTimer = nil
+        } else if trustTimer == nil {
+            // Until the grant arrives, look every two seconds; then re-arm once and stop.
+            trustTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.checkTrust() }
+            }
+        }
+    }
+
+    /// The system announces Accessibility changes; the grant itself lands a
+    /// moment later, so look again after half a second.
+    private func watchTrust() {
+        guard trustObserver == nil else { return }
+        trustObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.accessibility.api"), object: nil, queue: .main
+        ) { [weak self] _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                MainActor.assumeIsolated { self?.checkTrust() }
+            }
+        }
+    }
+
+    private func checkTrust() {
+        guard isEnabled else { return }
+        let trusted = AXIsProcessTrusted()
+        if Self.needsRearm(monitorTrusted: keyMonitorTrusted, trustedNow: trusted) {
+            armKeyMonitor()
+        } else if !trusted {
+            keyMonitorTrusted = false
+            if trustTimer == nil { armKeyMonitor() }
+        }
+    }
+
+    /// Pure: a monitor installed without the grant must be installed again once it arrives.
+    nonisolated static func needsRearm(monitorTrusted: Bool, trustedNow: Bool) -> Bool {
+        trustedNow && !monitorTrusted
+    }
+
+    /// "gyoza level 1500 · shown · typing armed": what the companion is doing, for the Engines pane.
+    var diagnosticLine: String {
+        let level = window.map { "\($0.level.rawValue)" } ?? "none"
+        let state = !isEnabled ? "off" : hiddenForBox ? "hidden for the box" : hiddenForTyping ? "hidden for typing" : "shown"
+        let typing = keyMonitorTrusted ? "typing armed" : "typing waits for Accessibility"
+        return "gyoza level \(level) · \(state) · \(typing)"
     }
 
     /// The box is up: step aside. Back when it closes.
@@ -91,6 +155,7 @@ final class PointerCompanion {
         guard let window else { return }
         if Self.isVisible(enabled: isEnabled, hiddenForBox: hiddenForBox, hiddenForTyping: hiddenForTyping) {
             follow()
+            if window.level != Self.level { window.level = Self.level }
             window.orderFrontRegardless()
         } else {
             window.orderOut(nil)
@@ -120,10 +185,10 @@ final class PointerCompanion {
         CGPoint(x: pointer.x + offset.x, y: pointer.y + offset.y - size.height / 2)
     }
 
-    private static func makeWindow() -> NSPanel {
+    /// Internal so a test can check the real window's level, not just the constant.
+    static func makeWindow() -> NSPanel {
         let panel = NSPanel(contentRect: CGRect(x: 0, y: 0, width: size.width, height: size.height),
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.level = level
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -132,7 +197,10 @@ final class PointerCompanion {
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.animationBehavior = .none
-        panel.isFloatingPanel = true
+        // Not `isFloatingPanel = true`: setting it resets the level to
+        // `.floating` (3), below every menu, which is where the gyoza sat
+        // from 1.0.3 to 1.1.6 whatever level was set before it.
+        panel.level = level
         let host = NSHostingView(rootView: PointerCompanionView())
         host.wantsLayer = true
         panel.contentView = host

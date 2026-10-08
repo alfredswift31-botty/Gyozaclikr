@@ -374,6 +374,12 @@ struct UISnapshotTests {
 
 @MainActor
 struct PointerCompanionTests {
+    @Test func aMonitorInstalledBeforeTheGrantIsInstalledAgain() {
+        #expect(PointerCompanion.needsRearm(monitorTrusted: false, trustedNow: true))
+        #expect(!PointerCompanion.needsRearm(monitorTrusted: true, trustedNow: true))
+        #expect(!PointerCompanion.needsRearm(monitorTrusted: false, trustedNow: false))
+    }
+
     @Test func theGyozaHidesWhileTypingLikeTheCursor() {
         #expect(PointerCompanion.hidesWhileTyping([]))
         #expect(PointerCompanion.hidesWhileTyping([.shift]), "capitals are typing")
@@ -388,6 +394,11 @@ struct PointerCompanionTests {
     }
 
     @Test func theGyozaFloatsAboveMenus() {
+        // The real window, not just the constant: 1.1.6 set the level and then
+        // `isFloatingPanel = true` reset it to `.floating`, and only this catches that.
+        let window = PointerCompanion.makeWindow()
+        #expect(window.level == PointerCompanion.level)
+        #expect(window.level.rawValue > NSWindow.Level.popUpMenu.rawValue)
         #expect(PointerCompanion.level.rawValue > NSWindow.Level.popUpMenu.rawValue)
         #expect(PointerCompanion.level.rawValue > NSWindow.Level.statusBar.rawValue)
         #expect(PointerCompanion.level.rawValue < Int(CGWindowLevelForKey(.cursorWindow)))

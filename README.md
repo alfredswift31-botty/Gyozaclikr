@@ -30,6 +30,7 @@ If the result says it failed to authenticate, run `claude` in Terminal and use `
 A small gyoza floats beside the pointer while the app is running, so you can see it is alive; it steps aside while the box is open, hides while you type as the pointer does, and floats above open menus. The menu-bar gyoza shows the shortcut, the last answer, history, the engines' state and the permissions. If ⌃Space is held by macOS (it switches keyboard languages when more than one is on), the app falls back to ⌃⌥Space and Settings › General says so. Record any combination you like there under Shortcut: click the field and press the keys. § or a function key works on its own; a bare letter is refused, since it would steal typing everywhere.
 
 ## Versions
+- **1.1.7** (8 Oct 2026): 1.1.6's two fixes actually take effect: the gyoza's window level is no longer reset below menus, and the typing monitor is installed again once Accessibility is granted, without a relaunch.
 - **1.1.6** (8 Oct 2026): the gyoza hides while you type and comes back when the mouse moves, like the pointer; it floats above context and drop-down menus instead of behind them.
 - **1.1.5** (8 Oct 2026): the gyoza beside the pointer is the owner's own drawing, alone, in place of the olive hologram. Confirmed on the owner's Mac.
 - **1.1.4** (7 Oct 2026): the shortcut can be § (or a function key) on its own; the Settings section is headed Shortcut and says what it takes. Confirmed on the owner's Mac.

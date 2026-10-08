@@ -108,7 +108,7 @@ final class Coordinator {
         Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
             guard let self else { return }
-            let line = "\(event) \(Self.clock.string(from: Date())) · \(panel.diagnosticLine) · hotkey \(hotKey.isRegistered ? hotKey.displayString : "unregistered")"
+            let line = "\(event) \(Self.clock.string(from: Date())) · \(panel.diagnosticLine) · hotkey \(hotKey.isRegistered ? hotKey.displayString : "unregistered") · \(companion.diagnosticLine)"
             settingsModel.boxDiagnostics = line
             Self.log.notice("\(line, privacy: .public)")
         }
